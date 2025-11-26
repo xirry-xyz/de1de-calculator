@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>德州扑克牌局追踪与积分榜</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0d1117;
+            color: #c9d1d9;
+        }
+        .card {
+            background-color: #161b22;
+            border: 1px solid #30363d;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        .btn-primary {
+            background-color: #238636;
+            transition: background-color 0.2s;
+        }
+        .btn-primary:hover:not(:disabled) {
+            background-color: #2ea043;
+        }
+        .input-field:disabled {
+            background-color: #21262d;
+            cursor: not-allowed;
+        }
+        .input-field {
+            background-color: #0d1117;
+            border-color: #30363d;
+            color: #c9d1d9;
+        }
+        .table-header {
+            background-color: #21262d;
+            color: #f0f6fc;
+        }
+        .text-win { color: #2ea043; }
+        .text-loss { color: #f85149; }
+        .text-neutral { color: #c9d1d9; }
+    </style>
+</head>
+<body>
+
+    <div class="min-h-screen p-4 sm:p-8">
+        <h1 class="text-3xl font-bold mb-8 text-center text-white">🎴 德州扑克结算与积分榜 📈</h1>
+        
+        <!-- Auth Status & Button -->
+        <div class="card p-4 rounded-xl mb-6 flex justify-between items-center bg-gray-800/50">
+            <div>
+                <p id="auth-status" class="text-sm text-yellow-400 font-medium">正在连接 Firebase 并检查登录状态...</p>
+                <p id="admin-status" class="text-xs mt-1 font-bold"></p>
+            </div>
+            <button id="auth-button" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg text-sm" disabled>
+                加载中...
+            </button>
+        </div>
+
+        <!-- Configuration and New Session -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <!-- Configuration Card -->
+            <div class="card p-6 rounded-xl col-span-1">
+                <h2 class="text-xl font-semibold mb-4 border-b border-gray-700 pb-2">配置信息</h2>
+                <div class="space-y-3">
+                    <div>
+                        <label for="chipsPerEntry" class="block text-sm font-medium mb-1">每手买入筹码数</label>
+                        <input type="number" id="chipsPerEntry" value="3000" class="input-field w-full p-2 rounded-lg border focus:ring-green-500 focus:border-green-500" placeholder="例如: 3000" disabled>
+                    </div>
+                    <div>
+                        <label for="cnyPerEntry" class="block text-sm font-medium mb-1">每手买入对应 CNY</label>
+                        <input type="number" id="cnyPerEntry" value="300" class="input-field w-full p-2 rounded-lg border focus:ring-green-500 focus:border-green-500" placeholder="例如: 300" disabled>
+                    </div>
+                    <button onclick="updateConfig()" id="update-config-btn" class="btn-primary w-full p-3 rounded-lg font-semibold mt-4 disabled:opacity-50 disabled:cursor-not-allowed" disabled>更新配置</button>
+                    <p id="config-status" class="text-xs text-green-400 mt-2">正在等待数据库连接...</p>
+                </div>
+            </div>
+
+            <!-- New Player Input Card -->
+            <div class="card p-6 rounded-xl col-span-2">
+                <h2 class="text-xl font-semibold mb-4 border-b border-gray-700 pb-2">新增牌局玩家数据</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                    <div>
+                        <label for="playerName" class="block text-sm font-medium mb-1">玩家姓名</label>
+                        <input type="text" id="playerName" class="input-field w-full p-2 rounded-lg border" placeholder="A, B, C, D..." disabled>
+                    </div>
+                    <div>
+                        <label for="playerEntries" class="block text-sm font-medium mb-1">净买入次数 (可为负)</label>
+                        <input type="number" id="playerEntries" value="2" class="input-field w-full p-2 rounded-lg border" placeholder="例如: 2 或 -1" disabled>
+                    </div>
+                    <div>
+                        <label for="playerFinalChips" class="block text-sm font-medium mb-1">最终筹码数</label>
+                        <input type="number" id="playerFinalChips" value="3000" class="input-field w-full p-2 rounded-lg border" placeholder="例如: 3000" disabled>
+                    </div>
+                    <div class="flex items-end">
+                        <button onclick="addPlayerToSession()" id="add-player-btn" class="btn-primary w-full p-2 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed" disabled>添加玩家</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Session Results and Transfers -->
+        <div class="card p-6 rounded-xl mb-8">
+            <h2 class="text-xl font-semibold mb-4 border-b border-gray-700 pb-2">当前牌局结算</h2>
+            
+            <!-- Player Data Table -->
+            <div class="overflow-x-auto mb-6">
+                <table class="min-w-full divide-y divide-gray-700 rounded-lg overflow-hidden">
+                    <thead class="table-header">
+                        <tr>
+                            <th class="p-3 text-left text-xs font-medium uppercase tracking-wider">玩家</th>
+                            <th class="p-3 text-right text-xs font-medium uppercase tracking-wider">总买入 (筹码)</th>
+                            <th class="p-3 text-right text-xs font-medium uppercase tracking-wider">最终筹码</th>
+                            <th class="p-3 text-right text-xs font-medium uppercase tracking-wider">P&L (筹码)</th>
+                            <th class="p-3 text-right text-xs font-medium uppercase tracking-wider">P&L (CNY)</th>
+                            <th class="p-3 text-right text-xs font-medium uppercase tracking-wider">调整后 P&L</th>
+                            <th class="p-3 text-center text-xs font-medium uppercase tracking-wider">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="session-data-body" class="divide-y divide-gray-800">
+                        <tr id="session-placeholder"><td colspan="7" class="p-4 text-center text-gray-400">请添加玩家数据...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Summary and Actions -->
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mt-4 p-4 rounded-lg bg-gray-800/50">
+                <div class="text-sm">
+                    <p>总买入筹码: <span id="total-buy-in" class="font-bold">0</span></p>
+                    <p>总剩余筹码: <span id="total-final-chips" class="font-bold">0</span></p>
+                    <p>筹码差额 (应为0): <span id="chip-discrepancy" class="font-bold">0</span></p>
+                    <p>CNY 盈亏总和 (应为0): <span id="cny-discrepancy" class="font-bold text-yellow-400">0 CNY</span></p>
+                </div>
+                <div class="mt-4 sm:mt-0 flex space-x-3">
+                    <button onclick="calculateSettlement()" class="btn-primary p-3 rounded-lg font-semibold bg-gray-600 hover:bg-gray-700">计算转账方案</button>
+                    <button onclick="saveSessionData()" id="save-session-btn" class="btn-primary p-3 rounded-lg font-semibold bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed" disabled>保存牌局</button>
+                    <button onclick="clearSession()" id="clear-session-btn" class="p-3 rounded-lg font-semibold bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed" disabled>清空</button>
+                </div>
+            </div>
+            
+            <!-- Transfer Solution -->
+            <div id="transfer-solution" class="mt-6 p-4 rounded-lg bg-green-900/30 border border-green-600 hidden">
+                <h3 class="text-lg font-semibold mb-2 text-green-400">💸 最佳转账方案 (最小化次数)</h3>
+                <ul id="transfer-list" class="space-y-1"></ul>
+            </div>
+        </div>
+        
+        <!-- Past Sessions List -->
+        <div class="card p-6 rounded-xl mb-8">
+            <h2 class="text-xl font-semibold mb-4 border-b border-gray-700 pb-2">📜 历史牌局记录</h2>
+            <div class="flex justify-between items-center mb-4">
+                <p class="text-sm text-gray-400">点击删除按钮将从积分榜中永久移除该牌局数据。</p>
+                <button onclick="loadPastSessions()" class="p-2 rounded-lg font-semibold text-sm bg-gray-600 hover:bg-gray-700">刷新记录</button>
+            </div>
+            <div id="past-sessions-list" class="space-y-3">
+                <p class="text-center text-gray-500" id="sessions-loading-status">正在加载历史记录...</p>
+            </div>
+        </div>
+
+
+        <!-- Leaderboard (Scoreboard) -->
+        <div class="card p-6 rounded-xl">
+            <h2 class="text-xl font-semibold mb-4 border-b border-gray-700 pb-2">📊 总积分榜 (Leaderboard)</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-700 rounded-lg overflow-hidden">
+                    <thead class="table-header">
+                        <tr>
+                            <th class="p-3 text-left text-xs font-medium uppercase tracking-wider">玩家</th>
+                            <th class="p-3 text-right text-xs font-medium uppercase tracking-wider">总盈亏 (CNY)</th>
+                            <th class="p-3 text-right text-xs font-medium uppercase tracking-wider">平均盈亏</th>
+                            <th class="p-3 text-right text-xs font-medium uppercase tracking-wider">胜率 (%)</th>
+                            <th class="p-3 text-right text-xs font-medium uppercase tracking-wider">波动率 (CNY)</th>
+                            <th class="p-3 text-right text-xs font-medium uppercase tracking-wider">Sharpe Ratio</th>
+                            <th class="p-3 text-right text-xs font-medium uppercase tracking-wider">最大连亏 (次数)</th>
+                            <th class="p-3 text-center text-xs font-medium uppercase tracking-wider">总局数</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboard-body" class="divide-y divide-gray-800">
+                        <tr id="leaderboard-placeholder"><td colspan="8" class="p-4 text-center text-gray-400">加载中... 请确保已保存牌局数据。</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <button onclick="loadScoreboard()" class="btn-primary mt-4 p-2 rounded-lg font-semibold bg-gray-600 hover:bg-gray-700">刷新积分榜</button>
+        </div>
+
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, doc, setDoc, getDoc, deleteDoc, getDocs, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Authorization Configuration ---
+        // ⚠️ 请将此邮箱替换为您自己的 Google 账户邮箱，该账户将拥有编辑权限
+        const ADMIN_EMAIL = 'xirry.xyz@gmail.com'; 
+        let isAdmin = false; 
+
+        // Global variables for Firebase services
+        let db;
+        let auth;
+        let userId = 'anonymous'; // Default user ID
+
+        // Configuration and Session Data
+        let config = {
+            chipsPerEntry: 3000,
+            cnyPerEntry: 300
+        };
+        let sessionPlayers = [];
+
+        // App ID (MANDATORY)
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'poker-tracker-default';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        
+        // Expose global functions to the window object
+        window.updateConfig = updateConfig;
+        window.addPlayerToSession = addPlayerToSession;
+        window.removePlayer = removePlayer;
+        window.calculateSettlement = calculateSettlement;
+        window.saveSessionData = saveSessionData;
+        window.clearSession = clearSession;
+        window.loadScoreboard = loadScoreboard;
+        window.loadPastSessions = loadPastSessions;
+        window.deleteSession = deleteSession;
+        window.signInWithGoogle = signInWithGoogle;
+        window.signOutUser = signOutUser;
+
+
+        // --- Core Functions ---
+
+        function getPublicCollection(collectionName) {
+            // Firestore Security Rules path: /artifacts/{appId}/public/data/{your_collection_name}
+            // ⚠️ 建议的公共数据读取规则：
+            // match /artifacts/{appId}/public/data/{document=**} {
+            //   allow read;  // 允许所有用户（包括未登录）读取公共数据
+            //   allow write: if request.auth != null && request.auth.token.email == 'xirry.xyz@gmail.com'; // 仅允许管理员写入
+            // }
+            return collection(db, `artifacts/${appId}/public/data/${collectionName}`);
+        }
+
+        /**
+         * 切换编辑界面的启用/禁用状态
+         */
+        function toggleEditingUI(enable) {
+            const elementsToToggle = [
+                'chipsPerEntry', 'cnyPerEntry', 'update-config-btn', 
+                'playerName', 'playerEntries', 'playerFinalChips', 'add-player-btn', 
+                'save-session-btn', 'clear-session-btn'
+            ];
+            
+            elementsToToggle.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.disabled = !enable;
+                    if (el.tagName === 'BUTTON') {
+                        el.classList.toggle('opacity-50', !enable);
+                        el.classList.toggle('cursor-not-allowed', !enable);
+                    }
+                }
+            });
+
+            // 重新渲染列表以更新移除和删除按钮的状态
+            updateSessionSummary();
+            loadPastSessions(); 
+        }
+
+        /**
+         * Google 登录
+         */
+        async function signInWithGoogle() {
+            if (!auth) return;
+            const provider = new GoogleAuthProvider();
+            try {
+                // 要求用户选择账户
+                provider.setCustomParameters({
+                    prompt: 'select_account'
+                });
+                await signInWithPopup(auth, provider);
+            } catch (error) {
+                console.error("Google Sign-In failed:", error);
+                alertModal("登录失败", `Google 登录出错: ${error.message}`);
+            }
+        }
+
+        /**
+         * 退出登录
+         */
+        async function signOutUser() {
+            if (!auth) return;
+            try {
+                await signOut(auth);
+                alertModal("操作成功", "您已成功退出登录。");
+            } catch (error) {
+                console.error("Sign Out failed:", error);
+                alertModal("操作失败", `退出登录出错: ${error.message}`);
+            }
+        }
+
+
+        /**
+         * 初始化Firebase和认证
+         */
+        async function initializeFirebase() {
+            if (!firebaseConfig) {
+                console.error("Firebase config is missing.");
+                document.getElementById('auth-status').textContent = '错误: Firebase配置缺失。';
+                return;
+            }
+            try {
+                // setLogLevel('Debug'); // For debugging in console
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                
+                // 监听认证状态变化
+                onAuthStateChanged(auth, (user) => {
+                    const authButton = document.getElementById('auth-button');
+                    const authStatus = document.getElementById('auth-status');
+                    const adminStatus = document.getElementById('admin-status');
+                    
+                    if (user) {
+                        userId = user.uid;
+                        // 检查用户是否是管理员，无论他们是如何登录的
+                        isAdmin = (user.email === ADMIN_EMAIL);
+                        authStatus.textContent = `当前用户: ${user.email || user.uid} (ID: ${userId})`;
+                        authButton.textContent = '退出登录';
+                        authButton.onclick = signOutUser;
+                        authButton.disabled = false;
+                        authButton.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                        authButton.classList.add('bg-gray-600', 'hover:bg-gray-700');
+                        
+                        if (isAdmin) {
+                            adminStatus.textContent = '👑 您是管理员，拥有全部编辑权限。';
+                            adminStatus.classList.remove('text-yellow-400', 'text-red-400');
+                            adminStatus.classList.add('text-green-400');
+                        } else {
+                            adminStatus.textContent = '🔒 编辑功能已锁定。请联系管理员获取权限。';
+                            adminStatus.classList.add('text-yellow-400');
+                            adminStatus.classList.remove('text-green-400', 'text-red-400');
+                        }
+
+                        // 加载数据并切换UI
+                        loadConfigFromStorage();
+                        loadScoreboard();
+                        loadPastSessions(); 
+                        toggleEditingUI(isAdmin); // 根据权限切换UI
+                    } else {
+                        userId = 'anonymous';
+                        isAdmin = false;
+                        authStatus.textContent = '未登录。请使用 Google 账户登录。';
+                        adminStatus.textContent = '🔒 编辑功能已锁定。';
+                        adminStatus.classList.add('text-red-400');
+                        adminStatus.classList.remove('text-green-400', 'text-yellow-400');
+
+                        authButton.textContent = '使用 Google 登录';
+                        authButton.onclick = signInWithGoogle;
+                        authButton.disabled = false;
+                        authButton.classList.add('bg-blue-600', 'hover:bg-blue-700');
+                        authButton.classList.remove('bg-gray-600', 'hover:bg-gray-700');
+
+                        // 即使未登录也尝试加载公共数据 (如果安全规则允许)
+                        loadConfigFromStorage();
+                        loadScoreboard();
+                        loadPastSessions();
+                        toggleEditingUI(isAdmin); // 禁用编辑UI
+                    }
+                });
+
+            } catch (error) {
+                console.error("Firebase Initialization or Auth Failed:", error);
+                document.getElementById('auth-status').textContent = '错误: Firebase初始化失败。';
+            }
+        }
+
+        /**
+         * 从Firestore加载配置
+         */
+        function loadConfigFromStorage() {
+            const configStatus = document.getElementById('config-status');
+            if (!db) {
+                configStatus.textContent = '数据库未连接。';
+                return;
+            }
+            
+            const configRef = doc(getPublicCollection('config'), 'game-config');
+            
+            try {
+                onSnapshot(configRef, (docSnap) => {
+                    if (docSnap.exists()) {
+                        config = docSnap.data();
+                        document.getElementById('chipsPerEntry').value = config.chipsPerEntry;
+                        document.getElementById('cnyPerEntry').value = config.cnyPerEntry;
+                        configStatus.textContent = '配置已从云端加载。';
+                    } else {
+                        console.log("No config found, using default.");
+                        configStatus.textContent = '使用默认配置。';
+                    }
+                    updateSessionSummary(); // Recalculate if config changes
+                }, (error) => {
+                    // 仅在控制台记录错误，不向用户显示“权限不足”的弹窗
+                    if (error.code === 'permission-denied') {
+                        console.warn("[CONSOLE_WARN] Error loading config (Permission Denied). Check Firestore rules.");
+                        configStatus.textContent = '配置数据加载失败 (只读模式)。';
+                    } else {
+                        console.error("Error loading config:", error);
+                        configStatus.textContent = `加载配置失败: ${error.message}`;
+                    }
+                });
+            } catch (e) {
+                // 捕获 onSnapshot 设置时的错误
+                 console.error("Error setting up config listener:", e);
+            }
+        }
+
+        /**
+         * 更新配置并保存到Firestore
+         */
+        async function updateConfig() {
+            if (!isAdmin) {
+                alertModal("操作失败", "编辑功能已锁定。");
+                return;
+            }
+            if (!db) {
+                alertModal("操作失败", "数据库未连接。");
+                return;
+            }
+
+            const chips = parseFloat(document.getElementById('chipsPerEntry').value);
+            const cny = parseFloat(document.getElementById('cnyPerEntry').value);
+
+            if (isNaN(chips) || chips <= 0 || isNaN(cny) || cny <= 0) {
+                alertModal("输入错误", "请输入有效的正数。");
+                document.getElementById('config-status').textContent = '请输入有效的正数。';
+                return;
+            }
+
+            config.chipsPerEntry = chips;
+            config.cnyPerEntry = cny;
+
+            const configRef = doc(getPublicCollection('config'), 'game-config');
+            try {
+                await setDoc(configRef, config, { merge: true });
+                document.getElementById('config-status').textContent = '配置已更新并保存到云端。';
+            } catch (e) {
+                console.error("Error saving config:", e);
+                alertModal("保存失败", `保存配置失败: ${e.message}`);
+                document.getElementById('config-status').textContent = '保存配置失败。';
+            }
+            
+            updateSessionSummary();
+        }
+
+        /**
+         * 添加玩家到当前牌局
+         */
+        function addPlayerToSession() {
+            if (!isAdmin) {
+                alertModal("操作失败", "编辑功能已锁定。");
+                return;
+            }
+
+            const name = document.getElementById('playerName').value.trim();
+            const entries = parseFloat(document.getElementById('playerEntries').value);
+            const finalChips = parseFloat(document.getElementById('playerFinalChips').value);
+
+            if (!name || isNaN(entries) || isNaN(finalChips) || finalChips < 0) {
+                alertModal("输入错误", "请确保玩家姓名不为空，净买入次数是有效的数字，且最终筹码为有效的非负数字。");
+                return;
+            }
+            
+            const totalBuyInChips = entries * config.chipsPerEntry;
+            const pnlChips = finalChips - totalBuyInChips;
+            const pnlCNY = pnlChips * (config.cnyPerEntry / config.chipsPerEntry);
+
+            const existingIndex = sessionPlayers.findIndex(p => p.name === name);
+
+            const newPlayer = {
+                id: Date.now() + Math.random(), // Unique ID for table row
+                name,
+                entries,
+                totalBuyInChips: Math.round(totalBuyInChips),
+                finalChips: Math.round(finalChips),
+                pnlChips: Math.round(pnlChips),
+                pnlCNY: parseFloat(pnlCNY.toFixed(2)),
+                adjustedPnLCNY: parseFloat(pnlCNY.toFixed(2)) // Initial value before adjustment
+            };
+
+            if (existingIndex !== -1) {
+                sessionPlayers[existingIndex] = newPlayer;
+            } else {
+                sessionPlayers.push(newPlayer);
+            }
+
+            // Clear input fields for next entry
+            document.getElementById('playerName').value = '';
+            document.getElementById('playerEntries').value = '2';
+            document.getElementById('playerFinalChips').value = '3000';
+
+            updateSessionSummary();
+        }
+        
+        /**
+         * 移除玩家
+         */
+        function removePlayer(id) {
+            if (!isAdmin) {
+                alertModal("操作失败", "编辑功能已锁定。");
+                return;
+            }
+            sessionPlayers = sessionPlayers.filter(p => p.id !== id);
+            updateSessionSummary();
+        }
+
+        /**
+         * 根据用户指定的优先级调整盈亏以抹平筹码差额
+         */
+        function adjustDiscrepancy(players) {
+            let totalPnL = players.reduce((sum, p) => sum + p.pnlCNY, 0);
+
+            if (Math.abs(totalPnL) < 0.01) {
+                return players.map(p => ({ ...p, adjustedPnLCNY: p.pnlCNY }));
+            }
+
+            const adjustedPlayers = players.map(p => ({ ...p, adjustedPnLCNY: p.pnlCNY }));
+            const adjustmentMagnitude = Math.abs(totalPnL); 
+
+            if (totalPnL > 0) { 
+                const winners = adjustedPlayers.filter(p => p.adjustedPnLCNY > 0);
+                const totalWinMagnitude = winners.reduce((sum, p) => sum + p.adjustedPnLCNY, 0);
+                
+                if (totalWinMagnitude > 0) {
+                    winners.forEach(p => {
+                        const ratio = p.adjustedPnLCNY / totalWinMagnitude;
+                        p.adjustedPnLCNY -= adjustmentMagnitude * ratio; 
+                    });
+                }
+            
+            } else { 
+                const losers = adjustedPlayers.filter(p => p.adjustedPnLCNY < 0);
+                const totalLossMagnitude = losers.reduce((sum, p) => sum + Math.abs(p.adjustedPnLCNY), 0);
+                
+                if (totalLossMagnitude > 0) {
+                    losers.forEach(p => {
+                        const ratio = Math.abs(p.adjustedPnLCNY) / totalLossMagnitude;
+                        p.adjustedPnLCNY += adjustmentMagnitude * ratio;
+                    });
+                }
+            }
+            
+            return adjustedPlayers.map(p => ({ ...p, adjustedPnLCNY: parseFloat(p.adjustedPnLCNY.toFixed(2)) }));
+        }
+
+        /**
+         * 更新当前牌局的数据表格和汇总信息
+         */
+        function updateSessionSummary() {
+            sessionPlayers = adjustDiscrepancy(sessionPlayers.map(p => ({ ...p, pnlCNY: p.pnlCNY })));
+
+            const tbody = document.getElementById('session-data-body');
+            const saveBtn = document.getElementById('save-session-btn');
+            tbody.innerHTML = '';
+            
+            let totalBuyInChips = 0;
+            let totalFinalChips = 0;
+            let totalPnLCNY = 0;
+
+            if (sessionPlayers.length === 0) {
+                tbody.innerHTML = '<tr id="session-placeholder"><td colspan="7" class="p-4 text-center text-gray-400">请添加玩家数据...</td></tr>';
+                saveBtn.disabled = true;
+                document.getElementById('clear-session-btn').disabled = true;
+            } else {
+                saveBtn.disabled = !isAdmin;
+                document.getElementById('clear-session-btn').disabled = !isAdmin;
+                
+                sessionPlayers.forEach(p => {
+                    totalBuyInChips += p.totalBuyInChips;
+                    totalFinalChips += p.finalChips;
+                    totalPnLCNY += p.adjustedPnLCNY;
+
+                    const pnlClass = p.adjustedPnLCNY > 0.01 ? 'text-win' : p.adjustedPnLCNY < -0.01 ? 'text-loss' : 'text-neutral';
+                    
+                    const removeBtnHtml = isAdmin ? `
+                        <button onclick="removePlayer(${p.id})" class="text-red-500 hover:text-red-400 text-sm font-semibold">移除</button>
+                    ` : `
+                        <span class="text-gray-600 text-sm cursor-not-allowed">锁定</span>
+                    `;
+
+                    const row = `
+                        <tr class="hover:bg-gray-800/70 transition-colors">
+                            <td class="p-3 font-semibold">${p.name}</td>
+                            <td class="p-3 text-right">${p.totalBuyInChips}</td>
+                            <td class="p-3 text-right">${p.finalChips}</td>
+                            <td class="p-3 text-right ${pnlClass}">${p.pnlChips}</td>
+                            <td class="p-3 text-right ${pnlClass}">${p.pnlCNY.toFixed(2)} CNY</td>
+                            <td class="p-3 text-right ${pnlClass} font-bold">${p.adjustedPnLCNY.toFixed(2)} CNY</td>
+                            <td class="p-3 text-center">${removeBtnHtml}</td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += row;
+                });
+            }
+
+            document.getElementById('total-buy-in').textContent = Math.round(totalBuyInChips);
+            document.getElementById('total-final-chips').textContent = Math.round(totalFinalChips);
+            const chipDiscrepancy = Math.round(totalFinalChips - totalBuyInChips);
+            document.getElementById('chip-discrepancy').textContent = chipDiscrepancy;
+            
+            const cnyDiscrepancyElement = document.getElementById('cny-discrepancy');
+            cnyDiscrepancyElement.textContent = `${totalPnLCNY.toFixed(2)} CNY`;
+            cnyDiscrepancyElement.className = totalPnLCNY > 0.01 ? 'font-bold text-win' : totalPnLCNY < -0.01 ? 'font-bold text-loss' : 'font-bold text-green-400';
+            
+            if (document.getElementById('transfer-solution').classList.contains('block')) {
+                calculateTransfers(sessionPlayers);
+            }
+        }
+        
+        /**
+         * 计算最小转账方案 (Schrage/Greedy Algorithm)
+         */
+        function calculateSettlement() {
+            if (sessionPlayers.length === 0) {
+                 alertModal("结算失败", "请先添加玩家数据。");
+                return;
+            }
+
+            const adjustedPlayers = sessionPlayers.map(p => ({
+                name: p.name,
+                pnl: p.adjustedPnLCNY
+            }));
+
+            const transfers = calculateTransfers(adjustedPlayers);
+            const transferList = document.getElementById('transfer-list');
+            const solutionDiv = document.getElementById('transfer-solution');
+            transferList.innerHTML = '';
+
+            if (transfers.length === 0) {
+                transferList.innerHTML = `<li class="text-green-300">🎉 所有玩家盈亏为零，无需转账！</li>`;
+            } else {
+                transfers.forEach(t => {
+                    const listItem = `<li><span class="font-bold">${t.from}</span> → <span class="font-bold">${t.to}</span>: <span class="text-green-300">${t.amount.toFixed(2)} CNY</span></li>`;
+                    transferList.innerHTML += listItem;
+                });
+            }
+
+            solutionDiv.classList.remove('hidden');
+            solutionDiv.classList.add('block');
+        }
+
+        function calculateTransfers(players) {
+            const transfers = [];
+            
+            let winners = players.filter(p => p.pnl > 0).map(p => ({ ...p, pnl: parseFloat(p.pnl.toFixed(2)) }));
+            let losers = players.filter(p => p.pnl < 0).map(p => ({ ...p, pnl: parseFloat(p.pnl.toFixed(2)) }));
+
+            winners.sort((a, b) => b.pnl - a.pnl);
+            losers.sort((a, b) => a.pnl - b.pnl);
+
+            while (winners.length > 0 && losers.length > 0) {
+                const winner = winners[0];
+                const loser = losers[0];
+
+                const debt = Math.abs(loser.pnl);
+                const credit = winner.pnl;
+
+                const amount = Math.min(debt, credit);
+
+                transfers.push({
+                    from: loser.name,
+                    to: winner.name,
+                    amount: amount
+                });
+
+                winner.pnl -= amount;
+                loser.pnl += amount; 
+
+                if (Math.abs(winner.pnl) < 0.01) {
+                    winners.shift();
+                }
+                if (Math.abs(loser.pnl) < 0.01) {
+                    losers.shift();
+                }
+            }
+            return transfers;
+        }
+
+        /**
+         * 将当前牌局数据保存到Firestore
+         */
+        async function saveSessionData() {
+            if (!isAdmin) {
+                alertModal("操作失败", "编辑功能已锁定。");
+                return;
+            }
+            if (sessionPlayers.length === 0) {
+                alertModal("保存失败", "当前牌局没有玩家数据。");
+                return;
+            }
+            if (!db) {
+                alertModal("保存失败", "数据库未连接或认证失败。");
+                return;
+            }
+
+            const sessionId = Date.now().toString(); // 使用时间戳作为唯一ID
+            const sessionData = {
+                id: sessionId, 
+                date: new Date().toISOString(),
+                config: config,
+                playerResults: sessionPlayers.map(p => ({
+                    name: p.name,
+                    pnlCNY: p.adjustedPnLCNY,
+                    isWin: p.adjustedPnLCNY > 0.01
+                }))
+            };
+
+            const sessionRef = doc(getPublicCollection('sessions'), sessionId);
+            try {
+                await setDoc(sessionRef, sessionData);
+            } catch (e) {
+                console.error("Error saving session data:", e);
+                alertModal("保存失败", `保存牌局数据时出错: ${e.message}`);
+                return;
+            }
+
+            try {
+                 await runTransaction(db, async (transaction) => {
+                    const updates = new Map(); 
+
+                    for (const player of sessionPlayers) {
+                        const playerRef = doc(getPublicCollection('scoreboard'), player.name);
+                        
+                        const docSnapshot = await transaction.get(playerRef); 
+                        
+                        const newHistoryEntry = { sessionId: sessionId, date: sessionData.date, pnl: player.adjustedPnLCNY };
+                        let history = [];
+
+                        if (docSnapshot.exists()) {
+                            const data = docSnapshot.data();
+                            if (data.history && Array.isArray(data.history)) {
+                                history = data.history.filter(h => h.sessionId !== sessionId); // 确保没有重复记录
+                            }
+                        }
+                        
+                        history.push(newHistoryEntry);
+                        
+                        updates.set(player.name, {
+                            ref: playerRef,
+                            data: {
+                                name: player.name,
+                                history: history,
+                            }
+                        });
+                    }
+                    
+                    for (const update of updates.values()) {
+                        transaction.set(update.ref, update.data, { merge: true });
+                    }
+                });
+
+                alertModal("保存成功", `牌局已成功保存并更新积分榜数据。`);
+                clearSession();
+                loadScoreboard();
+                loadPastSessions();
+
+            } catch (e) {
+                console.error("Error updating scoreboard in transaction:", e);
+                alertModal("保存失败", `更新积分榜时出错 (事务失败): ${e.message}`);
+            }
+        }
+
+        /**
+         * 清空当前牌局数据
+         */
+        function clearSession() {
+            if (!isAdmin) {
+                alertModal("操作失败", "编辑功能已锁定。");
+                return;
+            }
+            sessionPlayers = [];
+            document.getElementById('transfer-solution').classList.remove('block');
+            document.getElementById('transfer-solution').classList.add('hidden');
+            updateSessionSummary();
+        }
+
+        // --- Session Management ---
+
+        /**
+         * 加载并显示所有历史牌局
+         */
+        async function loadPastSessions() {
+            const sessionListDiv = document.getElementById('past-sessions-list');
+            const statusElement = document.getElementById('sessions-loading-status');
+            
+            sessionListDiv.innerHTML = '<p class="text-center text-gray-500" id="sessions-loading-status">正在加载历史记录...</p>';
+            
+            if (!db) {
+                document.getElementById('sessions-loading-status').textContent = '数据库未连接。请稍候或登录。';
+                return;
+            }
+
+            try {
+                const snapshot = await getDocs(getPublicCollection('sessions'));
+                const sessions = [];
+                snapshot.forEach(doc => {
+                    sessions.push({ id: doc.id, ...doc.data() });
+                });
+
+                sessions.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+                sessionListDiv.innerHTML = ''; // Clear status message
+
+                if (sessions.length === 0) {
+                    sessionListDiv.innerHTML = '<p class="text-center text-gray-500">暂无已保存的牌局记录。</p>';
+                } else {
+                    sessions.forEach(session => {
+                        const date = new Date(session.date).toLocaleString('zh-CN', {
+                            year: 'numeric', month: '2-digit', day: '2-digit',
+                            hour: '2-digit', minute: '2-digit'
+                        });
+                        
+                        const playerSummary = session.playerResults.map(p => {
+                            const pnlClass = p.pnlCNY > 0.01 ? 'text-win' : p.pnlCNY < -0.01 ? 'text-loss' : 'text-neutral';
+                            return `<span class="text-sm font-medium ${pnlClass}">${p.name} (${p.pnlCNY.toFixed(2)})</span>`;
+                        }).join(', ');
+                        
+                        // 根据权限显示删除按钮或锁定标记
+                        const deleteBtn = isAdmin ? `
+                            <button onclick="deleteSession('${session.id}', ${JSON.stringify(session.playerResults)})" 
+                                class="p-2 rounded-lg font-semibold text-sm bg-red-700 hover:bg-red-800 w-full sm:w-auto flex-shrink-0">
+                                🗑️ 删除
+                            </button>` : `
+                            <span class="p-2 rounded-lg font-semibold text-sm bg-gray-600 text-gray-400 w-full sm:w-auto flex-shrink-0 text-center cursor-not-allowed">
+                                🔒 锁定
+                            </span>`;
+
+                        const sessionElement = document.createElement('div');
+                        sessionElement.className = 'card p-4 rounded-lg flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-2 sm:space-y-0';
+                        sessionElement.innerHTML = `
+                            <div class="flex flex-col w-full sm:w-3/4">
+                                <span class="text-base font-semibold text-white">牌局时间: ${date}</span>
+                                <span class="text-sm text-gray-400 mt-1">总结: ${playerSummary}</span>
+                            </div>
+                            ${deleteBtn}
+                        `;
+                        sessionListDiv.appendChild(sessionElement);
+                    });
+                }
+            } catch (e) {
+                // 仅在控制台记录错误，不向用户显示“权限不足”的弹窗
+                if (e.code === 'permission-denied') {
+                    console.warn("[CONSOLE_WARN] Error loading past sessions (Permission Denied). Check Firestore rules.");
+                    sessionListDiv.innerHTML = `<p class="text-center text-gray-500">历史记录加载失败 (只读模式)。</p>`;
+                } else {
+                    console.error("Error loading past sessions:", e);
+                    sessionListDiv.innerHTML = `<p class="text-center text-red-400">加载历史记录失败: ${e.message}</p>`;
+                }
+            }
+        }
+
+        /**
+         * 删除指定的牌局记录并更新所有受影响的积分榜
+         */
+        async function deleteSession(sessionId, playerResults) {
+            if (!isAdmin) {
+                alertModal("操作失败", "编辑功能已锁定。");
+                return;
+            }
+            if (!db) {
+                alertModal("操作失败", "数据库未连接。");
+                return;
+            }
+
+            // 使用自定义模态框替代 window.confirm
+            const confirmAction = await new Promise((resolve) => {
+                const modal = document.createElement('div');
+                modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4';
+                modal.innerHTML = `
+                    <div class="card p-6 rounded-xl w-full max-w-md">
+                        <h3 class="text-xl font-bold mb-3 text-red-500">确认删除</h3>
+                        <p class="text-gray-300 mb-4">确定要永久删除牌局 ID: ${sessionId} 吗？此操作不可逆。</p>
+                        <div class="flex justify-end space-x-3">
+                            <button id="modal-cancel-btn" class="p-3 rounded-lg font-semibold bg-gray-600 hover:bg-gray-700">取消</button>
+                            <button id="modal-delete-btn" class="p-3 rounded-lg font-semibold bg-red-600 hover:bg-red-700">永久删除</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+                document.getElementById('modal-cancel-btn').onclick = () => { document.body.removeChild(modal); resolve(false); };
+                document.getElementById('modal-delete-btn').onclick = () => { document.body.removeChild(modal); resolve(true); };
+            });
+
+            if (!confirmAction) {
+                return;
+            }
+            
+            const sessionRef = doc(getPublicCollection('sessions'), sessionId);
+
+            try {
+                await runTransaction(db, async (transaction) => {
+                    const scoreboardUpdates = new Map(); 
+
+                    for (const result of playerResults) {
+                        const playerRef = doc(getPublicCollection('scoreboard'), result.name);
+                        const docSnapshot = await transaction.get(playerRef);
+
+                        if (docSnapshot.exists()) {
+                            const data = docSnapshot.data();
+                            let history = data.history || [];
+
+                            const updatedHistory = history.filter(h => h.sessionId !== sessionId);
+                            
+                            scoreboardUpdates.set(result.name, {
+                                ref: playerRef,
+                                data: {
+                                    name: result.name,
+                                    history: updatedHistory,
+                                }
+                            });
+                        }
+                    }
+
+                    for (const update of scoreboardUpdates.values()) {
+                        transaction.set(update.ref, update.data, { merge: true });
+                    }
+                    
+                    transaction.delete(sessionRef);
+                });
+
+                alertModal("删除成功", `牌局 ${sessionId} 已成功删除并更新了积分榜。`);
+                
+                loadScoreboard();
+                loadPastSessions();
+
+            } catch (e) {
+                console.error("Error deleting session in transaction:", e);
+                alertModal("删除失败", `删除牌局和更新积分榜时出错: ${e.message}`);
+            }
+        }
+
+
+        // --- Scoreboard / Metrics Calculation ---
+
+        /**
+         * 从Firestore加载并计算积分榜
+         */
+        async function loadScoreboard() {
+            const leaderboardPlaceholder = document.getElementById('leaderboard-placeholder');
+            
+            if (!db) {
+                leaderboardPlaceholder.textContent = '数据库未连接。请稍候或登录。';
+                return;
+            }
+
+            leaderboardPlaceholder.textContent = '正在从云端加载数据...';
+            
+            try {
+                const snapshot = await getDocs(getPublicCollection('scoreboard'));
+                const playerStatsMap = new Map();
+
+                const allHistory = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (data.history && Array.isArray(data.history)) {
+                        data.history.forEach(h => {
+                             allHistory.push({ name: data.name, ...h });
+                        });
+                    }
+                });
+
+                const groupedHistory = allHistory.reduce((acc, item) => {
+                    if (!acc[item.name]) acc[item.name] = [];
+                    acc[item.name].push(item);
+                    return acc;
+                }, {});
+                
+                for (const name in groupedHistory) {
+                    const history = groupedHistory[name].sort((a, b) => new Date(a.date) - new Date(b.date));
+                    playerStatsMap.set(name, calculateMetrics(name, history));
+                }
+
+                renderLeaderboard([...playerStatsMap.values()]);
+                
+            } catch (e) {
+                // 仅在控制台记录错误，不向用户显示“权限不足”的弹窗
+                if (e.code === 'permission-denied') {
+                    console.warn("[CONSOLE_WARN] Error loading scoreboard (Permission Denied). Check Firestore rules.");
+                    leaderboardPlaceholder.textContent = '积分榜数据加载失败 (只读模式)。';
+                } else {
+                    console.error("Error loading scoreboard:", e);
+                    leaderboardPlaceholder.textContent = `加载积分榜失败: ${e.message}`;
+                }
+            }
+        }
+
+        /**
+         * 计算单个玩家的全部指标
+         */
+        function calculateMetrics(name, history) {
+            const pnls = history.map(h => h.pnl);
+            const totalSessions = pnls.length;
+            if (totalSessions === 0) {
+                return { name, totalSessions: 0, totalPnL: 0, avgPnL: 0, winRate: 0, volatility: 0, sharpe: 0, maxLosingStreak: 0 };
+            }
+
+            const totalPnL = pnls.reduce((sum, pnl) => sum + pnl, 0);
+            const avgPnL = totalPnL / totalSessions;
+
+            const variance = pnls.reduce((sum, pnl) => sum + Math.pow(pnl - avgPnL, 2), 0) / totalSessions;
+            const volatility = Math.sqrt(variance);
+
+            const sharpe = volatility > 0 ? avgPnL / volatility : (avgPnL > 0 ? Infinity : 0);
+
+            const sessionsWon = pnls.filter(pnl => pnl > 0.01).length;
+            const winRate = (sessionsWon / totalSessions) * 100;
+
+            // 最大连亏次数
+            let currentLosingStreak = 0;
+            let maxLosingStreak = 0;
+
+            for (const pnl of pnls) {
+                if (pnl < -0.01) { 
+                    currentLosingStreak++;
+                } else {
+                    currentLosingStreak = 0; 
+                }
+                maxLosingStreak = Math.max(maxLosingStreak, currentLosingStreak);
+            }
+
+
+            return {
+                name,
+                totalSessions,
+                totalPnL: totalPnL,
+                avgPnL: avgPnL,
+                winRate: winRate,
+                volatility: volatility,
+                sharpe: sharpe,
+                maxLosingStreak: maxLosingStreak
+            };
+        }
+
+        /**
+         * 渲染积分榜表格
+         */
+        function renderLeaderboard(stats) {
+            const tbody = document.getElementById('leaderboard-body');
+            tbody.innerHTML = '';
+            
+            if (stats.length === 0) {
+                tbody.innerHTML = '<tr id="leaderboard-placeholder"><td colspan="8" class="p-4 text-center text-gray-400">暂无数据。请保存一次牌局。</td></tr>';
+                return;
+            }
+
+            stats.sort((a, b) => b.totalPnL - a.totalPnL);
+
+            stats.forEach(s => {
+                const pnlClass = s.totalPnL > 0.01 ? 'text-win' : s.totalPnL < -0.01 ? 'text-loss' : 'text-neutral';
+                let sharpeText = isFinite(s.sharpe) ? s.sharpe.toFixed(2) : 'N/A';
+                let sharpeClass = s.sharpe > 0.5 ? 'text-win' : s.sharpe > 0 ? 'text-yellow-400' : 'text-loss';
+                
+                if (s.sharpe === Infinity) {
+                    sharpeText = '∞';
+                    sharpeClass = 'text-green-400';
+                }
+                
+                const row = `
+                    <tr class="hover:bg-gray-800/70 transition-colors">
+                        <td class="p-3 font-semibold">${s.name}</td>
+                        <td class="p-3 text-right ${pnlClass} font-bold">${s.totalPnL.toFixed(2)}</td>
+                        <td class="p-3 text-right">${s.avgPnL.toFixed(2)}</td>
+                        <td class="p-3 text-right">${s.winRate.toFixed(1)}%</td>
+                        <td class="p-3 text-right">${s.volatility.toFixed(2)}</td>
+                        <td class="p-3 text-right ${sharpeClass}">${sharpeText}</td>
+                        <td class="p-3 text-right text-loss font-bold">${s.maxLosingStreak}</td>
+                        <td class="p-3 text-center">${s.totalSessions}</td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+        }
+        
+        // --- Utility ---
+
+        function alertModal(title, message) {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4';
+            modal.innerHTML = `
+                <div class="card p-6 rounded-xl w-full max-w-md">
+                    <h3 class="text-xl font-bold mb-3 text-white">${title}</h3>
+                    <p class="text-gray-300 mb-4">${message}</p>
+                    <button id="modal-ok-btn" class="btn-primary w-full p-3 rounded-lg font-semibold">确定</button>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            document.getElementById('modal-ok-btn').onclick = () => document.body.removeChild(modal);
+        }
+        
+        // Initial setup on window load
+        window.onload = initializeFirebase;
+
+    </script>
+</body>
+</html>
