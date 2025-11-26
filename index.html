@@ -212,9 +212,9 @@
         let sessionPlayers = [];
 
         // --- Firebase Configuration ---
-        // ⚠️ 关键步骤 2: 这是您提供的配置，用于 Vercel/生产环境
+        // ⚠️ 关键步骤 2: 这是您提供的配置。请用您在 Firebase 控制台获取的完整、正确的 API 密钥替换 'REPLACE_WITH_YOUR_API_KEY'
         const MANUAL_FIREBASE_CONFIG = {
-            apiKey: "AIzaSyD4mEhWsVxOi5F1PIMCk1ykAs6TO8prUQ",
+            apiKey: "***REMOVED***", // <-- 请替换此处的 API 密钥
             authDomain: "de1de-calculator.firebaseapp.com",
             projectId: "de1de-calculator",
             storageBucket: "de1de-calculator.firebasestorage.app",
@@ -297,7 +297,12 @@
                 await signInWithPopup(auth, provider);
             } catch (error) {
                 console.error("Google Sign-In failed:", error);
-                alertModal("登录失败", `Google 登录出错: ${error.message}`);
+                // 检查是否是 API 密钥错误，给出更明确的提示
+                let errorMessage = `Google 登录出错: ${error.message}`;
+                if (error.code === 'auth/api-key-not-valid') {
+                     errorMessage = `API 密钥无效。请检查 index.html 文件中的 'apiKey' 配置是否完整且正确。`;
+                }
+                alertModal("登录失败", errorMessage);
             }
         }
 
@@ -320,6 +325,13 @@
          * 初始化Firebase和认证
          */
         async function initializeFirebase() {
+            // 检查 API 密钥是否已替换
+            if (firebaseConfig.apiKey === 'REPLACE_WITH_YOUR_API_KEY') {
+                document.getElementById('auth-status').textContent = '错误: 请在代码中替换 API 密钥后再部署。';
+                document.getElementById('auth-button').disabled = true;
+                return;
+            }
+
             if (!firebaseConfig || !firebaseConfig.projectId) {
                 console.error("Firebase config is missing or incomplete.");
                 document.getElementById('auth-status').textContent = '错误: Firebase配置缺失或无效。请在代码中检查配置。';
@@ -843,7 +855,7 @@
                         
                         // 根据权限显示删除按钮或锁定标记
                         const deleteBtn = isAdmin ? `
-                            <button onclick="deleteSession('${session.id}', ${JSON.stringify(session.playerResults)})" 
+                            <button onclick="deleteSession('${session.id}', ${JSON.stringify(session.playerResults).replace(/'/g, "\\'")})" 
                                 class="p-2 rounded-lg font-semibold text-sm bg-red-700 hover:bg-red-800 w-full sm:w-auto flex-shrink-0">
                                 🗑️ 删除
                             </button>` : `
@@ -1074,7 +1086,7 @@
             stats.forEach(s => {
                 const pnlClass = s.totalPnL > 0.01 ? 'text-win' : s.totalPnL < -0.01 ? 'text-loss' : 'text-neutral';
                 let sharpeText = isFinite(s.sharpe) ? s.sharpe.toFixed(2) : 'N/A';
-                let sharpeClass = s.sharpe > 0.5 ? 'text-win' : s.sharpe > 0 ? 'text-yellow-400' : 'text-loss';
+                let sharpeClass = s.sharpe > 0.5 ? 'text-win' : s.sharpe > 0 ? 'text-yellow-400' : 'text-neutral';
                 
                 if (s.sharpe === Infinity) {
                     sharpeText = '∞';
