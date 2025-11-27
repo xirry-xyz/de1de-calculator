@@ -236,7 +236,6 @@
 
         // --- Authorization Configuration ---
         // ⚠️ 关键步骤 1: 请将此邮箱替换为您自己的 Google 账户邮箱，该账户将拥有编辑公共数据的权限
-        // 🚨🚨🚨 如果此处仍为占位符，管理员权限将不会启用，您将无法删除公共数据！🚨🚨🚨
         const ADMIN_EMAIL = 'xirry.xyz@gmail.com'; // **已为您更新**
         let isAdmin = false; 
 
@@ -325,7 +324,9 @@
                 return null; 
             }
             // Firestore Security Rules path: /artifacts/{appId}/users/{userId}/{your_collection_name}
-            return collection(db, `artifacts/${appId}/users/${userId}/${collectionName}`);
+            // 注意: userId 必须和认证用户的 UID 匹配，才能通过 Security Rules
+            const colPath = `artifacts/${appId}/users/${userId}/${collectionName}`;
+            return collection(db, colPath);
         }
 
         /**
@@ -400,7 +401,7 @@
          */
         async function initializeFirebase() {
             // 检查 API 密钥是否已替换
-            if (firebaseConfig.apiKey === 'REPLACE_WITH_YOUR_API_KEY') {
+            if (firebaseConfig.apiKey === 'AIzaSyD4mEhWsVxOi5F1PIMCk1ykAs6TOj8prUQ') {
                 document.getElementById('auth-status').textContent = '错误: 请在代码中替换 API 密钥后再部署。';
                 document.getElementById('auth-button').disabled = true;
                 return;
@@ -800,10 +801,17 @@
                 await setDoc(sessionRef, sessionData);
             } catch (e) {
                 console.error(`Error saving ${successMessage} data:`, e);
-                // 重点提醒安全规则问题
+                // 修复这里的错误提示，使其能区分公共和私人数据的权限问题
                 let errorMessage = `保存${successMessage}数据时出错: ${e.message}`;
                 if (e.code === 'permission-denied') {
-                    errorMessage += "<br><br>🚨 **权限错误 (Permission Denied)** 🚨<br>这通常意味着您的 Firebase Security Rules 不允许当前用户写入公共数据。";
+                    if (isSavingPublic) {
+                         errorMessage += "<br><br>🚨 **权限错误 (Permission Denied)** 🚨<br>这通常意味着您的 Firebase Security Rules 不允许当前用户写入公共数据。";
+                    } else {
+                         errorMessage += `<br><br>🚨 **权限错误 (Permission Denied)** 🚨<br>
+                            这通常意味着您的 Firebase Security Rules 不允许当前用户写入其私人数据。
+                            请检查您的 Firestore Rules，确保已认证用户可以写入路径 
+                            <code>/artifacts/{appId}/users/{userId}/{document=**}</code>。`;
+                    }
                 }
                 alertModal("保存失败", errorMessage);
                 return;
@@ -852,7 +860,20 @@
 
             } catch (e) {
                 console.error(`Error updating ${successMessage} scoreboard in transaction:`, e);
-                alertModal("保存失败", `更新${successMessage}积分榜时出错 (事务失败): ${e.message}`);
+                
+                // 修复这里的事务错误提示
+                let errorMessage = `更新${successMessage}积分榜时出错 (事务失败): ${e.message}`;
+                if (e.code === 'permission-denied') {
+                    if (isSavingPublic) {
+                         errorMessage += "<br><br>🚨 **权限错误 (Permission Denied)** 🚨<br>这通常意味着您的 Firebase Security Rules 不允许当前用户写入公共数据。";
+                    } else {
+                         errorMessage += `<br><br>🚨 **权限错误 (Permission Denied)** 🚨<br>
+                            这通常意味着您的 Firebase Security Rules 不允许当前用户写入其私人数据。
+                            请检查您的 Firestore Rules，确保已认证用户可以写入路径 
+                            <code>/artifacts/{appId}/users/{userId}/{document=**}</code>。`;
+                    }
+                }
+                alertModal("保存失败", errorMessage);
             }
         }
 
@@ -1091,10 +1112,17 @@
                 // 优化错误报告，强调安全规则问题
                 let errorMessage = `删除${sessionType}牌局和更新积分榜时出错: ${e.message}`;
                 if (e.code === 'permission-denied') {
-                    errorMessage += `<br><br>🚨 **权限错误 (Permission Denied)** 🚨<br>
-                        这通常意味着您的 Firebase Security Rules 不允许当前用户删除公共数据。
-                        请检查您的 Firestore Rules：在公共数据路径 <code>/artifacts/{appId}/public/data/{document=**}</code> 下，
-                        您需要确保 <code>delete</code> 规则明确允许您的管理员邮箱执行操作。`;
+                    if (isPublic) {
+                         errorMessage += `<br><br>🚨 **权限错误 (Permission Denied)** 🚨<br>
+                             这通常意味着您的 Firebase Security Rules 不允许当前用户删除公共数据。
+                             请检查您的 Firestore Rules：在公共数据路径 <code>/artifacts/{appId}/public/data/{document=**}</code> 下，
+                             您需要确保 <code>delete</code> 规则明确允许您的管理员邮箱执行操作。`;
+                    } else {
+                         errorMessage += `<br><br>🚨 **权限错误 (Permission Denied)** 🚨<br>
+                             这通常意味着您的 Firebase Security Rules 不允许当前用户删除其私人数据。
+                             请检查您的 Firestore Rules：私人数据路径 <code>/artifacts/{appId}/users/{userId}/{document=**}</code> 下，
+                             您需要确保 <code>delete</code> 规则允许 <code>request.auth.uid == userId</code> 执行操作。`;
+                    }
                 }
 
                 alertModal("删除失败", errorMessage);
