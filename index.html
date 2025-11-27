@@ -440,7 +440,7 @@
                         authButton.classList.add('bg-gray-600', 'hover:bg-gray-700');
                         
                         // 检查 ADMIN_EMAIL 是否已配置，并设置 isAdmin 状态
-                        if (ADMIN_EMAIL === 'YOUR_ADMIN_EMAIL@gmail.com') {
+                        if (ADMIN_EMAIL === 'xirry.xyz@gmail.com') {
                             isAdmin = false;
                             adminStatus.textContent = '⚠️ 警告: ADMIN_EMAIL 尚未配置。管理员权限已禁用。';
                             adminStatus.classList.remove('text-green-400', 'text-yellow-400');
@@ -471,7 +471,7 @@
                         
                         authStatus.textContent = '未登录。请使用 Google 账户登录。';
                         
-                        if (ADMIN_EMAIL === 'YOUR_ADMIN_EMAIL@gmail.com') {
+                        if (ADMIN_EMAIL === 'xirry.xyz@gmail.com') {
                             adminStatus.textContent = '⚠️ 警告: ADMIN_EMAIL 尚未配置。';
                         } else {
                             adminStatus.textContent = '🔒 编辑功能已锁定。';
@@ -800,7 +800,12 @@
                 await setDoc(sessionRef, sessionData);
             } catch (e) {
                 console.error(`Error saving ${successMessage} data:`, e);
-                alertModal("保存失败", `保存${successMessage}数据时出错: ${e.message}`);
+                // 重点提醒安全规则问题
+                let errorMessage = `保存${successMessage}数据时出错: ${e.message}`;
+                if (e.code === 'permission-denied') {
+                    errorMessage += "<br><br>🚨 **权限错误 (Permission Denied)** 🚨<br>这通常意味着您的 Firebase Security Rules 不允许当前用户写入公共数据。";
+                }
+                alertModal("保存失败", errorMessage);
                 return;
             }
 
@@ -971,6 +976,9 @@
         async function deleteSession(sessionId, playerResults, isPublic = true) {
             const sessionType = isPublic ? '公共' : '私人';
             
+            // 调试信息：确认当前权限状态
+            console.log(`[DELETE] Attempting to delete ${sessionType} session ${sessionId}. Current isAdmin: ${isAdmin}, Current userId: ${userId}`);
+
             // 再次检查权限
             if (isPublic && !isAdmin) {
                 alertModal("操作失败", "只有管理员才能删除公共牌局。");
@@ -1059,7 +1067,17 @@
 
             } catch (e) {
                 console.error(`Error deleting ${sessionType} session in transaction:`, e);
-                alertModal("删除失败", `删除${sessionType}牌局和更新积分榜时出错: ${e.message}`);
+                
+                // 优化错误报告，强调安全规则问题
+                let errorMessage = `删除${sessionType}牌局和更新积分榜时出错: ${e.message}`;
+                if (e.code === 'permission-denied') {
+                    errorMessage += `<br><br>🚨 **权限错误 (Permission Denied)** 🚨<br>
+                        这通常意味着您的 Firebase Security Rules 不允许当前用户删除公共数据。
+                        请检查您的 Firestore Rules：在公共数据路径 <code>/artifacts/{appId}/public/data/{document=**}</code> 下，
+                        您需要确保 <code>delete</code> 规则明确允许您的管理员邮箱执行操作。`;
+                }
+
+                alertModal("删除失败", errorMessage);
             }
         }
 
