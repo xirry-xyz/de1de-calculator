@@ -930,8 +930,13 @@
                         // 使用全局 isAdmin 变量进行检查
                         const canDelete = (isPublic && isAdmin) || (!isPublic && userId !== 'anonymous');
                         
+                        // 1. Stringify the playerResults array
+                        const playerResultsString = JSON.stringify(session.playerResults);
+                        // 2. Escape double quotes (") with HTML entity (&quot;) to be safe inside the onclick's double quotes
+                        const escapedPlayerResults = playerResultsString.replace(/"/g, '&quot;');
+                        
                         const deleteBtn = canDelete ? `
-                            <button onclick="deleteSession('${session.id}', ${JSON.stringify(session.playerResults).replace(/'/g, "\\'")}, ${isPublic})" 
+                            <button onclick="deleteSession('${session.id}', '${escapedPlayerResults}', ${isPublic})" 
                                 class="p-2 rounded-lg font-semibold text-sm bg-red-700 hover:bg-red-800 w-full sm:w-auto flex-shrink-0">
                                 🗑️ 删除
                             </button>` : `
@@ -970,12 +975,15 @@
         /**
          * 删除指定的牌局记录并更新所有受影响的积分榜
          * @param {string} sessionId - 牌局ID
-         * @param {Array<Object>} playerResults - 牌局结果
+         * @param {string} playerResultsString - 牌局结果的 JSON 字符串 (包含 HTML 实体 &quot;)
          * @param {boolean} isPublic - 是否为公共牌局
          */
-        async function deleteSession(sessionId, playerResults, isPublic = true) {
+        async function deleteSession(sessionId, playerResultsString, isPublic = true) {
             const sessionType = isPublic ? '公共' : '私人';
             
+            // **FIX**: Parse the escaped JSON string back to an object array
+            const playerResults = JSON.parse(playerResultsString.replace(/&quot;/g, '"'));
+
             // 调试信息：开始删除流程
             console.log(`[DELETE START] 尝试删除 ${sessionType} 牌局 ID: ${sessionId}`);
             console.log(`[DELETE START] 当前用户ID: ${userId}, isAdmin: ${isAdmin}`);
@@ -1073,8 +1081,9 @@
                 console.log(`[DELETE SUCCESS] Firestore 事务已提交。`);
                 alertModal("删除成功", `${sessionType}牌局 ${sessionId} 已成功删除并更新了积分榜。`);
                 
-                loadScoreboardFunc();
-                loadSessionsFunc();
+                // 确保调用正确的加载函数
+                (isPublic ? window.loadPublicScoreboard : window.loadPrivateScoreboard)();
+                (isPublic ? window.loadPastSessions : window.loadPrivateSessions)();
 
             } catch (e) {
                 console.error(`[DELETE ERROR] 删除 ${sessionType} session 失败:`, e);
