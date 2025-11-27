@@ -78,11 +78,11 @@
         <!-- Auth Status & Button -->
         <div class="card p-4 rounded-xl mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-gray-800/50">
             <div>
-                <p id="auth-status" class="text-sm text-yellow-400 font-medium">正在连接 Firebase 并检查登录状态...</p>
+                <p id="auth-status" class="text-sm text-yellow-400 font-medium">正在初始化...</p>
                 <p id="admin-status" class="text-xs mt-1 font-bold"></p>
-                <p class="text-xs mt-1 text-gray-400">当前用户ID: <span id="user-id-display" class="font-mono text-gray-300">N/A</span></p>
+                <p class="text-xs mt-1 text-gray-400">当前用户ID: <span id="user-id-display" class="font-mono text-gray-300">...</span></p>
             </div>
-            <button id="auth-button" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg text-sm mt-3 sm:mt-0" disabled>
+            <button id="auth-button" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg text-sm mt-3 sm:mt-0 opacity-50 cursor-not-allowed" disabled>
                 加载中...
             </button>
         </div>
@@ -334,7 +334,7 @@
                 provider.setCustomParameters({ prompt: 'select_account' });
                 await signInWithPopup(auth, provider);
             } catch (error) {
-                alertModal("登录失败", error.message);
+                alertModal("登录失败", error.message + "\n\n提示: 如果您在 Vercel 上部署，请确保已在 Firebase 控制台的 Auth -> Settings -> Authorized Domains 中添加了您的 Vercel 域名。");
             }
         }
 
@@ -343,8 +343,6 @@
             try { 
                 await signOut(auth); 
                 alertModal("操作成功", "您已成功退出登录。"); 
-                // Sign out leaves user null, onAuthStateChanged should ideally handle re-anon sign-in if needed,
-                // but for simplicity, we let the user stay on the page as guest or refresh.
             } catch (error) { alertModal("操作失败", error.message); }
         }
 
@@ -358,22 +356,19 @@
                 auth = getAuth(app);
                 db = getFirestore(app);
 
-                // --- FIX: Rule 3 Compliance (Auth First) ---
-                const initAuth = async () => {
+                // --- KEY FIX for Vercel / Production ---
+                // We do NOT force signInAnonymously here anymore because it might fail
+                // if not enabled in console, causing the app to hang.
+                // We simply listen to onAuthStateChanged.
+                
+                // If there is an initial custom token (e.g. from Canvas environment), use it.
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     try {
-                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                            await signInWithCustomToken(auth, __initial_auth_token);
-                        } else {
-                            // If no user is persisted, sign in anonymously to allow reading public data
-                             await signInAnonymously(auth);
-                        }
+                        await signInWithCustomToken(auth, __initial_auth_token);
                     } catch (e) {
-                        console.error("Auth init error:", e);
+                        console.error("Custom token auth failed:", e);
                     }
-                };
-                // We call this but don't strictly await it blocking the UI, 
-                // because onAuthStateChanged will handle the flow once it resolves.
-                initAuth(); 
+                }
                 
                 onAuthStateChanged(auth, (user) => {
                     const authButton = document.getElementById('auth-button');
@@ -381,13 +376,17 @@
                     const adminStatus = document.getElementById('admin-status');
                     const userIdDisplay = document.getElementById('user-id-display');
 
+                    // Unlock button in all cases
+                    authButton.disabled = false;
+                    authButton.classList.remove('opacity-50', 'cursor-not-allowed');
+
                     if (user) {
-                        // User is authenticated (either Anonymous or Google)
+                        // User is authenticated
                         userId = user.uid;
                         const isAnon = user.isAnonymous;
                         const email = user.email;
                         
-                        // Check Admin (Only valid if not anonymous and matches email)
+                        // Check Admin
                         let currentIsAdmin = false;
                         if (!isAnon && email === ADMIN_EMAIL) {
                             currentIsAdmin = true;
@@ -398,7 +397,7 @@
                         userIdDisplay.textContent = userId;
                         
                         if (isAnon) {
-                            // Guest / Anonymous Mode
+                            // Guest / Anonymous Mode (if enabled)
                             authStatus.textContent = '访客模式 (只读)';
                             adminStatus.textContent = '🔒 请登录以编辑数据或查看私人记录。';
                             adminStatus.classList.add('text-yellow-400');
@@ -406,19 +405,12 @@
                             
                             authButton.textContent = '使用 Google 登录';
                             authButton.onclick = signInWithGoogle;
-                            authButton.disabled = false;
                             authButton.classList.add('bg-blue-600', 'hover:bg-blue-700');
                             authButton.classList.remove('bg-gray-600', 'hover:bg-gray-700');
 
-                            // Load ONLY Public Data
                             loadScoreboard(true);
                             loadSessions(true);
-
-                            // Clear Private Data
-                            document.getElementById('private-sessions-list').innerHTML = '<p class="text-center text-gray-500">登录后可查看和编辑您的私人牌局。</p>';
-                            document.getElementById('private-leaderboard-body').innerHTML = '<tr><td colspan="9" class="p-4 text-center text-gray-400">登录后可查看您的私人积分榜。</td></tr>';
                             
-                            // Disable Editing
                             toggleEditingUI(false);
 
                         } else {
@@ -426,7 +418,6 @@
                             authStatus.textContent = `当前用户: ${email}`;
                             authButton.textContent = '退出登录';
                             authButton.onclick = signOutUser;
-                            authButton.disabled = false;
                             authButton.classList.remove('bg-blue-600', 'hover:bg-blue-700');
                             authButton.classList.add('bg-gray-600', 'hover:bg-gray-700');
                             
@@ -440,29 +431,31 @@
                                 adminStatus.classList.remove('text-green-400', 'text-red-400');
                             }
 
-                            // Load ALL Data
                             loadScoreboard(true); 
                             loadSessions(true); 
                             loadScoreboard(false); 
                             loadSessions(false); 
                             
-                            // Enable Editing
                             toggleEditingUI(true); 
                         }
 
                     } else {
-                        // User is null (Logged out or initializing)
-                        // Do NOT attempt to load data here to avoid Permission Denied
+                        // Not Logged In (Guest without Anon Auth)
                         userId = 'anonymous';
                         isAdmin = false;
                         
-                        authStatus.textContent = '正在连接...';
-                        adminStatus.textContent = '';
-                        userIdDisplay.textContent = '...';
+                        authStatus.textContent = '未登录 (访客模式)';
+                        adminStatus.textContent = '🔒 正在查看公共数据。登录后可编辑。';
+                        adminStatus.classList.add('text-yellow-400');
+                        userIdDisplay.textContent = 'N/A';
                         
-                        // Ensure buttons are reset
                         authButton.textContent = '使用 Google 登录';
                         authButton.onclick = signInWithGoogle;
+                        authButton.classList.add('bg-blue-600', 'hover:bg-blue-700');
+                        
+                        // Try to load public data anyway (assuming Firestore rules allow public read)
+                        loadScoreboard(true);
+                        loadSessions(true);
                         
                         // Disable UI
                         toggleEditingUI(false);
@@ -470,6 +463,7 @@
                 });
             } catch (error) {
                 console.error("Firebase Init Failed:", error);
+                document.getElementById('auth-status').textContent = '初始化错误: ' + error.message;
             }
         }
         
@@ -663,8 +657,11 @@
             if (!div) return;
             
             if (!db || (!isPublic && (userId === 'anonymous' || (auth.currentUser && auth.currentUser.isAnonymous))) || (!sessionsCol && !isPublic)) {
-                document.getElementById(statusId).textContent = "数据无法加载。";
-                return;
+                // For public data without login, we still try to fetch if we have a DB instance
+                if (!isPublic) {
+                    document.getElementById(statusId).textContent = "数据无法加载。";
+                    return;
+                }
             }
             
             try {
@@ -680,7 +677,7 @@
                     
                     // Check delete permissions
                     const isAnon = auth.currentUser && auth.currentUser.isAnonymous;
-                    const canDelete = (isPublic && isAdmin) || (!isPublic && !isAnon);
+                    const canDelete = (isPublic && isAdmin) || (!isPublic && !isAnon && userId !== 'anonymous');
                     
                     const escaped = JSON.stringify(session.playerResults).replace(/"/g, '&quot;');
                     const deleteBtn = canDelete ? `<button onclick="deleteSession('${session.id}', '${escaped}', ${isPublic})" class="px-2 py-1 rounded bg-red-900/50 hover:bg-red-800 text-xs text-red-200 ml-2">删除</button>` : '';
@@ -694,7 +691,7 @@
         async function deleteSession(sessionId, playerResultsString, isPublic = true) {
             const playerResults = JSON.parse(playerResultsString.replace(/&quot;/g, '"'));
             const isAnon = auth.currentUser && auth.currentUser.isAnonymous;
-            if ((isPublic && !isAdmin) || (!isPublic && isAnon)) { alertModal("失败", "无权删除。"); return; }
+            if ((isPublic && !isAdmin) || (!isPublic && (isAnon || userId === 'anonymous'))) { alertModal("失败", "无权删除。"); return; }
             
             const sessionsCol = isPublic ? getPublicCollection('sessions') : getPrivateCollection('private-sessions');
             const scoreboardCol = isPublic ? getPublicCollection('scoreboard') : getPrivateCollection('private-scoreboard');
@@ -732,8 +729,10 @@
             const placeholder = document.getElementById(isPublic ? 'leaderboard-placeholder' : 'private-leaderboard-placeholder');
             
             if (!db || (!isPublic && (userId === 'anonymous' || (auth.currentUser && auth.currentUser.isAnonymous))) || (!scoreboardCol && !isPublic)) {
-                if (placeholder) placeholder.textContent = "无法加载。";
-                return;
+                if (!isPublic) {
+                    if (placeholder) placeholder.textContent = "无法加载。";
+                    return;
+                }
             }
 
             try {
@@ -765,7 +764,7 @@
                 renderLeaderboard(isPublic);
             } catch (e) {
                 console.error(e);
-                if (placeholder) placeholder.textContent = "加载失败。";
+                if (placeholder) placeholder.textContent = "加载失败或无权限。";
             }
         }
 
