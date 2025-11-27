@@ -91,6 +91,19 @@
         <div class="card p-6 rounded-xl mb-8">
             <h2 class="text-xl font-semibold mb-4 border-b border-gray-700 pb-2">本局配置与玩家数据</h2>
             
+            <!-- Session Meta (Name & Date) - NEW -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 p-4 rounded-lg bg-gray-800/50">
+                <div>
+                    <label for="sessionName" class="block text-sm font-medium mb-1">牌局名称 (选填)</label>
+                    <input type="text" id="sessionName" class="input-field w-full p-2 rounded-lg border focus:ring-green-500 focus:border-green-500" placeholder="例如: 周五养生局">
+                </div>
+                <div>
+                    <label for="sessionDate" class="block text-sm font-medium mb-1">牌局日期</label>
+                    <!-- UPDATED: type="date" instead of datetime-local -->
+                    <input type="date" id="sessionDate" class="input-field w-full p-2 rounded-lg border focus:ring-green-500 focus:border-green-500">
+                </div>
+            </div>
+
             <!-- Session Configuration (Per Game) -->
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 p-4 rounded-lg bg-gray-800/50">
                 <div>
@@ -311,7 +324,7 @@
         }
 
         function toggleEditingUI(canEdit) {
-            const sessionInputElements = ['playerName', 'playerEntries', 'playerFinalChips', 'add-player-btn', 'chipsPerEntry', 'cnyPerEntry'];
+            const sessionInputElements = ['playerName', 'playerEntries', 'playerFinalChips', 'add-player-btn', 'chipsPerEntry', 'cnyPerEntry', 'sessionName', 'sessionDate'];
             sessionInputElements.forEach(id => { const el = document.getElementById(id); if (el) el.disabled = !canEdit; });
             const sessionActionElements = ['save-session-btn', 'clear-session-btn'];
             sessionActionElements.forEach(id => {
@@ -347,6 +360,13 @@
         }
 
         async function initializeFirebase() {
+            // Initialize Date input to YYYY-MM-DD local time
+            const now = new Date();
+            const yyyy = now.getFullYear();
+            const mm = String(now.getMonth() + 1).padStart(2, '0');
+            const dd = String(now.getDate()).padStart(2, '0');
+            document.getElementById('sessionDate').value = `${yyyy}-${mm}-${dd}`;
+
             if (firebaseConfig.apiKey === 'REPLACE_WITH_YOUR_API_KEY') {
                 document.getElementById('auth-status').textContent = '错误: 请在代码中替换 API 密钥后再部署。';
                 return;
@@ -356,11 +376,6 @@
                 auth = getAuth(app);
                 db = getFirestore(app);
 
-                // --- KEY FIX for Vercel / Production ---
-                // We do NOT force signInAnonymously here anymore because it might fail
-                // if not enabled in console, causing the app to hang.
-                // We simply listen to onAuthStateChanged.
-                
                 // If there is an initial custom token (e.g. from Canvas environment), use it.
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     try {
@@ -605,6 +620,11 @@
             const currentConfig = getCurrentSessionConfig();
             if (!currentConfig) { alertModal("保存失败", "配置无效。"); return; }
 
+            const sessionName = document.getElementById('sessionName').value.trim() || '未命名牌局';
+            const sessionDateVal = document.getElementById('sessionDate').value;
+            // UPDATED: Append T00:00:00 to force local date parsing, preventing previous-day issues in some TZs
+            const sessionDate = sessionDateVal ? new Date(sessionDateVal + 'T00:00:00').toISOString() : new Date().toISOString();
+
             const isSavingPublic = isAdmin;
             const sessionsCol = isSavingPublic ? getPublicCollection('sessions') : getPrivateCollection('private-sessions');
             const scoreboardCol = isSavingPublic ? getPublicCollection('scoreboard') : getPrivateCollection('private-scoreboard');
@@ -614,7 +634,13 @@
             if (!sessionsCol || !scoreboardCol) { alertModal("保存失败", "无法获取存储路径。"); return; }
 
             const sessionId = Date.now().toString();
-            const sessionData = { id: sessionId, date: new Date().toISOString(), config: currentConfig, playerResults: sessionPlayers.map(p => ({ name: p.name, pnlCNY: p.adjustedPnLCNY, isWin: p.adjustedPnLCNY > 0.01 })) };
+            const sessionData = { 
+                id: sessionId, 
+                date: sessionDate, // Use user selected date
+                name: sessionName, // Save session name
+                config: currentConfig, 
+                playerResults: sessionPlayers.map(p => ({ name: p.name, pnlCNY: p.adjustedPnLCNY, isWin: p.adjustedPnLCNY > 0.01 })) 
+            };
 
             try {
                 await setDoc(doc(sessionsCol, sessionId), sessionData);
@@ -635,6 +661,14 @@
                 });
                 alertModal("保存成功", `${successMessage}已保存。`);
                 clearSession();
+                // Reset session meta to today YYYY-MM-DD
+                document.getElementById('sessionName').value = '';
+                const now = new Date();
+                const yyyy = now.getFullYear();
+                const mm = String(now.getMonth() + 1).padStart(2, '0');
+                const dd = String(now.getDate()).padStart(2, '0');
+                document.getElementById('sessionDate').value = `${yyyy}-${mm}-${dd}`;
+                
                 loadFunc();
             } catch (e) {
                 console.error(e);
@@ -672,7 +706,9 @@
                 div.innerHTML = sessions.length === 0 ? `<p class="text-center text-gray-500">暂无记录。</p>` : '';
                 
                 sessions.forEach(session => {
-                    const date = new Date(session.date).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+                    // UPDATED: Show Date only (YYYY/MM/DD) without time
+                    const date = new Date(session.date).toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+                    const displayName = session.name || '未命名牌局';
                     const summary = session.playerResults.map(p => `<span class="${p.pnlCNY > 0 ? 'text-win' : p.pnlCNY < 0 ? 'text-loss' : 'text-neutral'}">${p.name}(${p.pnlCNY})</span>`).join(', ');
                     
                     // Check delete permissions
@@ -680,8 +716,18 @@
                     const canDelete = (isPublic && isAdmin) || (!isPublic && !isAnon && userId !== 'anonymous');
                     
                     const escaped = JSON.stringify(session.playerResults).replace(/"/g, '&quot;');
-                    const deleteBtn = canDelete ? `<button onclick="deleteSession('${session.id}', '${escaped}', ${isPublic})" class="px-2 py-1 rounded bg-red-900/50 hover:bg-red-800 text-xs text-red-200 ml-2">删除</button>` : '';
-                    div.innerHTML += `<div class="p-3 mb-2 rounded border border-gray-700 bg-gray-800/40 flex justify-between items-center"><div><span class="text-xs text-gray-400 block">${date}</span><div class="text-sm mt-1">${summary}</div></div>${deleteBtn}</div>`;
+                    const deleteBtn = canDelete ? `<button onclick="deleteSession('${session.id}', '${escaped}', ${isPublic})" class="px-2 py-1 rounded bg-red-900/50 hover:bg-red-800 text-xs text-red-200 ml-2 flex-shrink-0">删除</button>` : '';
+                    div.innerHTML += `
+                        <div class="p-3 mb-2 rounded border border-gray-700 bg-gray-800/40 flex justify-between items-start">
+                            <div class="flex-grow mr-2">
+                                <div class="flex flex-wrap items-baseline gap-2">
+                                    <span class="text-base font-semibold text-white">${displayName}</span>
+                                    <span class="text-xs text-gray-400 font-mono">${date}</span>
+                                </div>
+                                <div class="text-sm mt-1 leading-relaxed">${summary}</div>
+                            </div>
+                            ${deleteBtn}
+                        </div>`;
                 });
             } catch (e) {
                 div.innerHTML = `<p class="text-center text-red-400">错误: ${e.message}</p>`;
