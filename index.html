@@ -55,7 +55,7 @@
 <body>
 
     <div class="min-h-screen p-4 sm:p-8">
-        <h1 class="text-3xl font-bold mb-8 text-center text-white">🎴 德州扑克结算与积分榜 📈</h1>
+        <h1 class="text-3xl font-bold mb-8 text-center text-white">🎴 德州扑克牌局追踪与积分榜 📈</h1>
         
         <!-- Auth Status & Button -->
         <div class="card p-4 rounded-xl mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-gray-800/50">
@@ -976,19 +976,24 @@
         async function deleteSession(sessionId, playerResults, isPublic = true) {
             const sessionType = isPublic ? '公共' : '私人';
             
-            // 调试信息：确认当前权限状态
-            console.log(`[DELETE] Attempting to delete ${sessionType} session ${sessionId}. Current isAdmin: ${isAdmin}, Current userId: ${userId}`);
+            // 调试信息：开始删除流程
+            console.log(`[DELETE START] 尝试删除 ${sessionType} 牌局 ID: ${sessionId}`);
+            console.log(`[DELETE START] 当前用户ID: ${userId}, isAdmin: ${isAdmin}`);
+
 
             // 再次检查权限
             if (isPublic && !isAdmin) {
+                console.error(`[DELETE FAIL] 权限不足: 尝试删除公共牌局，但不是管理员。`);
                 alertModal("操作失败", "只有管理员才能删除公共牌局。");
                 return;
             }
             if (!isPublic && userId === 'anonymous') {
+                 console.error(`[DELETE FAIL] 权限不足: 尝试删除私人牌局，但未登录。`);
                  alertModal("操作失败", "请先登录才能删除私人牌局。");
                 return;
             }
             if (!db) {
+                console.error(`[DELETE FAIL] 数据库未连接。`);
                 alertModal("操作失败", "数据库未连接。");
                 return;
             }
@@ -997,12 +1002,12 @@
             const scoreboardCol = isPublic ? getPublicCollection('scoreboard') : getPrivateCollection('private-scoreboard');
 
             if (!sessionsCol || !scoreboardCol) {
+                console.error(`[DELETE FAIL] 无法获取 Firestore 集合引用。`);
                 alertModal("操作失败", "无法获取存储路径，请检查登录状态。");
                 return;
             }
             
-            const loadSessionsFunc = isPublic ? window.loadPastSessions : window.loadPrivateSessions;
-            const loadScoreboardFunc = isPublic ? window.loadPublicScoreboard : window.loadPrivateScoreboard;
+            console.log(`[DELETE CHECK] 通过权限和数据库连接检查。继续执行确认模态框。`);
 
             // Custom modal confirmation
             const confirmAction = await new Promise((resolve) => {
@@ -1024,13 +1029,17 @@
             });
 
             if (!confirmAction) {
+                console.log(`[DELETE ABORT] 用户取消了删除操作。`);
                 return;
             }
+            
+            console.log(`[DELETE CONFIRM] 用户确认删除，开始执行 Firestore 事务。`);
             
             const sessionRef = doc(sessionsCol, sessionId);
 
             try {
                 await runTransaction(db, async (transaction) => {
+                    console.log(`[TRANSACTION START] 正在删除 session: ${sessionId} 和更新积分榜历史记录。`);
                     const scoreboardUpdates = new Map(); 
 
                     for (const result of playerResults) {
@@ -1058,15 +1067,17 @@
                     }
                     
                     transaction.delete(sessionRef);
+                    console.log(`[TRANSACTION SUCCESS] 事务准备提交: 删除了 Session ${sessionId}。`);
                 });
 
+                console.log(`[DELETE SUCCESS] Firestore 事务已提交。`);
                 alertModal("删除成功", `${sessionType}牌局 ${sessionId} 已成功删除并更新了积分榜。`);
                 
                 loadScoreboardFunc();
                 loadSessionsFunc();
 
             } catch (e) {
-                console.error(`Error deleting ${sessionType} session in transaction:`, e);
+                console.error(`[DELETE ERROR] 删除 ${sessionType} session 失败:`, e);
                 
                 // 优化错误报告，强调安全规则问题
                 let errorMessage = `删除${sessionType}牌局和更新积分榜时出错: ${e.message}`;
