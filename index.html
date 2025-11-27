@@ -69,44 +69,38 @@
             </button>
         </div>
 
-        <!-- Configuration and New Session -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            <!-- Configuration Card -->
-            <div class="card p-6 rounded-xl col-span-1">
-                <h2 class="text-xl font-semibold mb-4 border-b border-gray-700 pb-2">配置信息 (管理员专用)</h2>
-                <div class="space-y-3">
-                    <div>
-                        <label for="chipsPerEntry" class="block text-sm font-medium mb-1">每手买入筹码数</label>
-                        <input type="number" id="chipsPerEntry" value="3000" class="input-field w-full p-2 rounded-lg border focus:ring-green-500 focus:border-green-500" placeholder="例如: 3000" disabled>
-                    </div>
-                    <div>
-                        <label for="cnyPerEntry" class="block text-sm font-medium mb-1">每手买入对应 CNY</label>
-                        <input type="number" id="cnyPerEntry" value="300" class="input-field w-full p-2 rounded-lg border focus:ring-green-500 focus:border-green-500" placeholder="例如: 300" disabled>
-                    </div>
-                    <button onclick="updateConfig()" id="update-config-btn" class="btn-primary w-full p-3 rounded-lg font-semibold mt-4 disabled:opacity-50 disabled:cursor-not-allowed" disabled>更新配置</button>
-                    <p id="config-status" class="text-xs text-green-400 mt-2">正在等待数据库连接...</p>
+        <!-- Session Configuration and New Player Input -->
+        <div class="card p-6 rounded-xl mb-8">
+            <h2 class="text-xl font-semibold mb-4 border-b border-gray-700 pb-2">本局配置与玩家数据</h2>
+            
+            <!-- Session Configuration (Per Game) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 p-4 rounded-lg bg-gray-800/50">
+                <div>
+                    <label for="chipsPerEntry" class="block text-sm font-medium mb-1">每手买入筹码数 (本局)</label>
+                    <input type="number" id="chipsPerEntry" value="3000" class="input-field w-full p-2 rounded-lg border focus:ring-green-500 focus:border-green-500" placeholder="例如: 3000">
+                </div>
+                <div>
+                    <label for="cnyPerEntry" class="block text-sm font-medium mb-1">每手买入对应 CNY (本局)</label>
+                    <input type="number" id="cnyPerEntry" value="300" class="input-field w-full p-2 rounded-lg border focus:ring-green-500 focus:border-green-500" placeholder="例如: 300">
                 </div>
             </div>
 
-            <!-- New Player Input Card -->
-            <div class="card p-6 rounded-xl col-span-2">
-                <h2 class="text-xl font-semibold mb-4 border-b border-gray-700 pb-2">新增牌局玩家数据</h2>
-                <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                    <div>
-                        <label for="playerName" class="block text-sm font-medium mb-1">玩家姓名</label>
-                        <input type="text" id="playerName" class="input-field w-full p-2 rounded-lg border" placeholder="A, B, C, D..." disabled>
-                    </div>
-                    <div>
-                        <label for="playerEntries" class="block text-sm font-medium mb-1">净买入次数 (可为负)</label>
-                        <input type="number" id="playerEntries" value="2" class="input-field w-full p-2 rounded-lg border" placeholder="例如: 2 或 -1" disabled>
-                    </div>
-                    <div>
-                        <label for="playerFinalChips" class="block text-sm font-medium mb-1">最终筹码数</label>
-                        <input type="number" id="playerFinalChips" value="3000" class="input-field w-full p-2 rounded-lg border" placeholder="例如: 3000" disabled>
-                    </div>
-                    <div class="flex items-end">
-                        <button onclick="addPlayerToSession()" id="add-player-btn" class="btn-primary w-full p-2 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed" disabled>添加玩家</button>
-                    </div>
+            <!-- Player Input -->
+            <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                <div>
+                    <label for="playerName" class="block text-sm font-medium mb-1">玩家姓名</label>
+                    <input type="text" id="playerName" class="input-field w-full p-2 rounded-lg border" placeholder="A, B, C, D..." disabled>
+                </div>
+                <div>
+                    <label for="playerEntries" class="block text-sm font-medium mb-1">净买入次数 (可为负)</label>
+                    <input type="number" id="playerEntries" value="2" class="input-field w-full p-2 rounded-lg border" placeholder="例如: 2 或 -1" disabled>
+                </div>
+                <div>
+                    <label for="playerFinalChips" class="block text-sm font-medium mb-1">最终筹码数</label>
+                    <input type="number" id="playerFinalChips" value="3000" class="input-field w-full p-2 rounded-lg border" placeholder="例如: 3000" disabled>
+                </div>
+                <div class="flex items-end">
+                    <button onclick="addPlayerToSession()" id="add-player-btn" class="btn-primary w-full p-2 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed" disabled>添加玩家</button>
                 </div>
             </div>
         </div>
@@ -250,11 +244,7 @@
         let auth;
         let userId = 'anonymous'; // Default user ID
 
-        // Configuration and Session Data
-        let config = {
-            chipsPerEntry: 3000,
-            cnyPerEntry: 300
-        };
+        // Session Data (Config is now local and per-session)
         let sessionPlayers = [];
 
         // --- Firebase Configuration ---
@@ -282,13 +272,12 @@
 
 
         // Expose global functions to the window object
-        window.updateConfig = updateConfig;
         window.addPlayerToSession = addPlayerToSession;
         window.removePlayer = removePlayer;
         window.calculateSettlement = calculateSettlement;
         window.saveSessionData = saveSessionData;
         window.clearSession = clearSession;
-        window.calculateTransfers = calculateTransfers; // Expose for utility
+        window.calculateTransfers = calculateTransfers; 
         window.deleteSession = deleteSession;
         window.signInWithGoogle = signInWithGoogle;
         window.signOutUser = signOutUser;
@@ -301,6 +290,21 @@
 
 
         // --- Core Functions ---
+
+        /**
+         * 获取当前牌局配置
+         */
+        function getCurrentSessionConfig() {
+            const chips = parseFloat(document.getElementById('chipsPerEntry').value);
+            const cny = parseFloat(document.getElementById('cnyPerEntry').value);
+            
+            if (isNaN(chips) || chips <= 0 || isNaN(cny) || cny <= 0) {
+                 // Fallback to defaults or validation fail
+                 return null;
+            }
+            
+            return { chipsPerEntry: chips, cnyPerEntry: cny };
+        }
 
         /**
          * 获取公共 Firestore 集合引用 (Admin read/write, Others read)
@@ -328,21 +332,18 @@
          * @param {boolean} isLoggedIn - 用户是否已登录
          */
         function toggleEditingUI(isLoggedIn) {
-            // 1. Config editing is ONLY for Admin
-            const configElements = ['chipsPerEntry', 'cnyPerEntry', 'update-config-btn'];
-            configElements.forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.disabled = !isAdmin;
-            });
+            // Session input and config are now for ANY logged-in user
+            const sessionInputElements = [
+                'playerName', 'playerEntries', 'playerFinalChips', 'add-player-btn', 
+                'chipsPerEntry', 'cnyPerEntry'
+            ];
             
-            // 2. Session input is for ANY logged-in user (or admin)
-            const sessionInputElements = ['playerName', 'playerEntries', 'playerFinalChips', 'add-player-btn'];
             sessionInputElements.forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.disabled = !isLoggedIn;
             });
             
-            // 3. Session actions are for ANY logged-in user
+            // Session actions are for ANY logged-in user
             const sessionActionElements = ['save-session-btn', 'clear-session-btn'];
             sessionActionElements.forEach(id => {
                 const el = document.getElementById(id);
@@ -437,7 +438,7 @@
                         authButton.classList.add('bg-gray-600', 'hover:bg-gray-700');
                         
                         if (isAdmin) {
-                            adminStatus.textContent = '👑 您是管理员，拥有全部编辑权限。';
+                            adminStatus.textContent = '👑 您是管理员，拥有公共数据编辑和删除权限。';
                             adminStatus.classList.remove('text-yellow-400', 'text-red-400');
                             adminStatus.classList.add('text-green-400');
                         } else {
@@ -447,7 +448,6 @@
                         }
 
                         // 加载数据并切换UI
-                        loadConfigFromStorage();
                         loadScoreboard(true); 
                         loadSessions(true); 
                         loadScoreboard(false); // Load private scoreboard
@@ -471,7 +471,6 @@
                         authButton.classList.remove('bg-gray-600', 'hover:bg-gray-700');
 
                         // 即使未登录也尝试加载公共数据 (如果安全规则允许)
-                        loadConfigFromStorage();
                         loadScoreboard(true);
                         loadSessions(true);
                         
@@ -488,89 +487,19 @@
                 document.getElementById('auth-status').textContent = '错误: Firebase初始化失败。';
             }
         }
-
-        /**
-         * 从Firestore加载配置
-         */
-        function loadConfigFromStorage() {
-            const configStatus = document.getElementById('config-status');
-            if (!db) {
-                configStatus.textContent = '数据库未连接。';
-                return;
-            }
-            
-            const configRef = doc(getPublicCollection('config'), 'game-config');
-            
-            try {
-                onSnapshot(configRef, (docSnap) => {
-                    if (docSnap.exists()) {
-                        config = docSnap.data();
-                        document.getElementById('chipsPerEntry').value = config.chipsPerEntry;
-                        document.getElementById('cnyPerEntry').value = config.cnyPerEntry;
-                        configStatus.textContent = '配置已从云端加载。';
-                    } else {
-                        console.log("No config found, using default.");
-                        configStatus.textContent = '使用默认配置。';
-                    }
-                    updateSessionSummary(); // Recalculate if config changes
-                }, (error) => {
-                    if (error.code === 'permission-denied') {
-                        console.warn("[CONSOLE_WARN] Error loading config (Permission Denied). Check Firestore rules.");
-                        configStatus.textContent = '配置数据加载失败 (只读模式)。';
-                    } else {
-                        console.error("Error loading config:", error);
-                        configStatus.textContent = `加载配置失败: ${error.message}`;
-                    }
-                });
-            } catch (e) {
-                 console.error("Error setting up config listener:", e);
-            }
-        }
-
-        /**
-         * 更新配置并保存到Firestore
-         */
-        async function updateConfig() {
-            if (!isAdmin) {
-                alertModal("操作失败", "只有管理员才能更新配置。");
-                return;
-            }
-            if (!db) {
-                alertModal("操作失败", "数据库未连接。");
-                return;
-            }
-
-            const chips = parseFloat(document.getElementById('chipsPerEntry').value);
-            const cny = parseFloat(document.getElementById('cnyPerEntry').value);
-
-            if (isNaN(chips) || chips <= 0 || isNaN(cny) || cny <= 0) {
-                alertModal("输入错误", "请输入有效的正数。");
-                document.getElementById('config-status').textContent = '请输入有效的正数。';
-                return;
-            }
-
-            config.chipsPerEntry = chips;
-            config.cnyPerEntry = cny;
-
-            const configRef = doc(getPublicCollection('config'), 'game-config');
-            try {
-                await setDoc(configRef, config, { merge: true });
-                document.getElementById('config-status').textContent = '配置已更新并保存到云端。';
-            } catch (e) {
-                console.error("Error saving config:", e);
-                alertModal("保存失败", `保存配置失败: ${e.message}`);
-                document.getElementById('config-status').textContent = '保存配置失败。';
-            }
-            
-            updateSessionSummary();
-        }
-
+        
         /**
          * 添加玩家到当前牌局
          */
         function addPlayerToSession() {
             if (userId === 'anonymous') {
                 alertModal("操作失败", "请先登录才能添加玩家数据。");
+                return;
+            }
+            
+            const currentConfig = getCurrentSessionConfig();
+            if (!currentConfig) {
+                alertModal("输入错误", "请确保每手买入的筹码数和CNY都为有效的正数。");
                 return;
             }
 
@@ -583,9 +512,9 @@
                 return;
             }
             
-            const totalBuyInChips = entries * config.chipsPerEntry;
+            const totalBuyInChips = entries * currentConfig.chipsPerEntry;
             const pnlChips = finalChips - totalBuyInChips;
-            const pnlCNY = pnlChips * (config.cnyPerEntry / config.chipsPerEntry);
+            const pnlCNY = pnlChips * (currentConfig.cnyPerEntry / currentConfig.chipsPerEntry);
 
             const existingIndex = sessionPlayers.findIndex(p => p.name === name);
 
@@ -597,7 +526,8 @@
                 finalChips: Math.round(finalChips),
                 pnlChips: Math.round(pnlChips),
                 pnlCNY: parseFloat(pnlCNY.toFixed(2)),
-                adjustedPnLCNY: parseFloat(pnlCNY.toFixed(2)) // Initial value before adjustment
+                adjustedPnLCNY: parseFloat(pnlCNY.toFixed(2)), // Initial value before adjustment
+                sessionConfig: currentConfig // Embed config for reference
             };
 
             if (existingIndex !== -1) {
@@ -817,7 +747,14 @@
                 return;
             }
             
+            const currentConfig = getCurrentSessionConfig();
+            if (!currentConfig) {
+                alertModal("保存失败", "请确保本局配置 (筹码/CNY) 为有效的正数。");
+                return;
+            }
+
             // Determine storage location based on user role
+            // Public save is only if Admin and they choose to save to public
             const isSavingPublic = isAdmin;
             const sessionsCol = isSavingPublic ? getPublicCollection('sessions') : getPrivateCollection('private-sessions');
             const scoreboardCol = isSavingPublic ? getPublicCollection('scoreboard') : getPrivateCollection('private-scoreboard');
@@ -834,7 +771,7 @@
             const sessionData = {
                 id: sessionId, 
                 date: new Date().toISOString(),
-                config: config,
+                config: currentConfig, // Save current session's config
                 playerResults: sessionPlayers.map(p => ({
                     name: p.name,
                     pnlCNY: p.adjustedPnLCNY,
@@ -970,7 +907,6 @@
                         
                         // Delete logic: Admin can delete Public (isPublic=true), Logged-in user can delete Private (isPublic=false)
                         const canDelete = (isPublic && isAdmin) || (!isPublic && userId !== 'anonymous');
-                        const deleteLabel = isPublic ? '公共' : '私人';
                         
                         const deleteBtn = canDelete ? `
                             <button onclick="deleteSession('${session.id}', ${JSON.stringify(session.playerResults).replace(/'/g, "\\'")}, ${isPublic})" 
@@ -980,6 +916,10 @@
                             <span class="p-2 rounded-lg font-semibold text-sm bg-gray-600 text-gray-400 w-full sm:w-auto flex-shrink-0 text-center cursor-not-allowed">
                                 🔒 锁定
                             </span>`;
+                        
+                        const configInfo = session.config ? 
+                            `<span class="text-xs text-gray-500">配置: ${session.config.chipsPerEntry} 筹码 = ${session.config.cnyPerEntry} CNY</span>` : '';
+
 
                         const sessionElement = document.createElement('div');
                         sessionElement.className = 'card p-4 rounded-lg flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-2 sm:space-y-0';
@@ -987,6 +927,7 @@
                             <div class="flex flex-col w-full sm:w-3/4">
                                 <span class="text-base font-semibold text-white">牌局时间: ${date}</span>
                                 <span class="text-sm text-gray-400 mt-1">总结: ${playerSummary}</span>
+                                ${configInfo}
                             </div>
                             ${deleteBtn}
                         `;
