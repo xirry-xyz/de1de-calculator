@@ -151,6 +151,30 @@
         
         .theme-toggle { background: none; border: none; cursor: pointer; padding: 8px; border-radius: 50%; color: var(--text-muted); transition: background-color 0.2s, color 0.2s; }
         .theme-toggle:hover { background-color: var(--bg-subtle); color: var(--text-main); }
+
+        /* Custom Tooltip Styles */
+        #global-tooltip {
+            position: fixed;
+            z-index: 100;
+            max-width: 250px;
+            pointer-events: none;
+            transition: opacity 0.15s ease-in-out;
+        }
+        .info-icon {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            margin-left: 4px;
+            border-radius: 50%;
+            border: 1px solid currentColor;
+            text-align: center;
+            line-height: 12px;
+            font-size: 10px;
+            color: var(--text-muted);
+            cursor: help;
+            opacity: 0.7;
+        }
+        .info-icon:hover { opacity: 1; color: var(--text-main); }
     </style>
     <script>
         (function() {
@@ -161,6 +185,9 @@
     </script>
 </head>
 <body class="antialiased">
+
+    <!-- Global Tooltip Element -->
+    <div id="global-tooltip" class="hidden bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg p-3 shadow-xl leading-relaxed border border-gray-700 dark:border-gray-600"></div>
 
     <div class="min-h-screen p-4 sm:p-8 max-w-7xl mx-auto">
         <div class="flex flex-col md:flex-row justify-between items-center mb-10">
@@ -293,7 +320,7 @@
         <div class="space-y-8">
             <div class="card rounded-xl overflow-hidden">
                 <div class="px-6 py-5 border-b border-subtle bg-card flex flex-col sm:flex-row justify-between items-start sm:items-center">
-                    <div><h2 class="text-xl font-bold text-main">总积分榜</h2><div class="flex items-center gap-2 mt-1"><span class="badge badge-admin">公共</span><span class="text-xs text-muted">点击表头排序</span></div></div>
+                    <div><h2 class="text-xl font-bold text-main">总积分榜</h2><div class="flex items-center gap-2 mt-1"><span class="badge badge-admin">公共</span><span class="text-xs text-muted">点击表头排序，移至 ⓘ 查看说明</span></div></div>
                     <button onclick="loadPublicScoreboard()" class="btn-secondary px-3 py-1.5 rounded-lg text-xs font-medium mt-3 sm:mt-0">刷新列表</button>
                 </div>
                 <div class="overflow-x-auto"><table class="min-w-full divide-y divide-subtle"><thead class="table-header"><tr id="public-leaderboard-header"></tr></thead><tbody id="leaderboard-body" class="bg-card divide-y divide-subtle"><tr id="leaderboard-placeholder"><td colspan="9" class="px-6 py-10 text-center text-muted">加载中...</td></tr></tbody></table></div>
@@ -325,6 +352,28 @@
         const firebaseConfig = typeof __firebase_config !== 'undefined' && __firebase_config.length > 0 ? JSON.parse(__firebase_config) : MANUAL_FIREBASE_CONFIG;
         
         window.addPlayerToSession = addPlayerToSession; window.removePlayer = removePlayer; window.calculateSettlement = calculateSettlement; window.saveSessionData = saveSessionData; window.clearSession = clearSession; window.calculateTransfers = calculateTransfers; window.deleteSession = deleteSession; window.signInWithGoogle = signInWithGoogle; window.signOutUser = signOutUser; window.loadPublicScoreboard = () => loadScoreboard(true); window.loadPrivateScoreboard = () => loadScoreboard(false); window.loadPastSessions = () => loadSessions(true); window.loadPrivateSessions = () => loadSessions(false); window.toggleSort = toggleSort;
+        
+        // Tooltip Logic
+        window.showTooltip = (event, content) => {
+            const el = document.getElementById('global-tooltip');
+            el.innerHTML = content;
+            el.classList.remove('hidden');
+            const rect = event.target.getBoundingClientRect();
+            // Position above the icon
+            const top = rect.top - el.offsetHeight - 8; 
+            let left = rect.left - (el.offsetWidth / 2) + (rect.width / 2);
+            
+            // Keep within viewport
+            if (left < 10) left = 10;
+            if (left + el.offsetWidth > window.innerWidth - 10) left = window.innerWidth - el.offsetWidth - 10;
+            
+            el.style.top = `${top}px`;
+            el.style.left = `${left}px`;
+        };
+        
+        window.hideTooltip = () => {
+            document.getElementById('global-tooltip').classList.add('hidden');
+        };
 
         function getCurrentSessionConfig() { const chips = parseFloat(document.getElementById('chipsPerEntry').value); const cny = parseFloat(document.getElementById('cnyPerEntry').value); if (isNaN(chips) || chips <= 0 || isNaN(cny) || cny <= 0) return null; return { chipsPerEntry: chips, cnyPerEntry: cny }; }
         function getPublicCollection(collectionName) { return collection(db, `artifacts/${appId}/public/data/${collectionName}`); }
@@ -434,12 +483,9 @@
         function removePlayer(id) { if (!auth.currentUser || auth.currentUser.isAnonymous) return; sessionPlayers = sessionPlayers.filter(p => p.id !== id); updateSessionSummary(); }
         
         function adjustDiscrepancy(players) {
-            // FIX: Start fresh from p.pnlCNY every time to prevent cumulative drift
             let totalPnL = players.reduce((s, p) => s + p.pnlCNY, 0); 
-            const res = players.map(p => ({...p, adjustedPnLCNY: p.pnlCNY})); // Reset adjustment
-            
+            const res = players.map(p => ({...p, adjustedPnLCNY: p.pnlCNY})); 
             if (Math.abs(totalPnL) < 0.01) return res;
-            
             const mag = Math.abs(totalPnL);
             if (totalPnL > 0) { 
                 const ws = res.filter(p => p.pnlCNY > 0); const tot = ws.reduce((s, p) => s + p.pnlCNY, 0); 
@@ -503,18 +549,14 @@
             const scoreCol = isAdmin ? getPublicCollection('scoreboard') : getPrivateCollection('private-scoreboard');
             const sid = Date.now().toString();
             try {
-                // FIXED: Transaction Logic (Reads before Writes)
                 await setDoc(doc(col, sid), { id: sid, date: dateStr, name, config: conf, playerResults: sessionPlayers.map(p => ({name: p.name, pnlCNY: p.adjustedPnLCNY})) });
-                
                 await runTransaction(db, async (t) => {
                     const updates = [];
-                    // Phase 1: Reads
                     for (const p of sessionPlayers) {
                         const ref = doc(scoreCol, p.name);
                         const snap = await t.get(ref);
                         updates.push({ref, p, snap});
                     }
-                    // Phase 2: Writes
                     for (const {ref, p, snap} of updates) {
                         let hist = snap.exists() ? (snap.data().history || []).filter(h => h.sessionId !== sid) : [];
                         hist.push({sessionId: sid, date: dateStr, pnl: p.adjustedPnLCNY});
@@ -588,16 +630,13 @@
             const col = isPub ? getPublicCollection('sessions') : getPrivateCollection('private-sessions');
             const scol = isPub ? getPublicCollection('scoreboard') : getPrivateCollection('private-scoreboard');
             try {
-                // FIXED: Transaction Logic
                 await runTransaction(db, async (t) => {
-                    // Phase 1: Reads
                     const updates = [];
                     for(const r of res) {
                         const ref = doc(scol, r.name);
                         const s = await t.get(ref);
                         updates.push({ref, s});
                     }
-                    // Phase 2: Writes
                     t.delete(doc(col, sid));
                     for(const {ref, s} of updates) {
                         if(s.exists()) {
@@ -610,7 +649,6 @@
             } catch(e) { alertModal("错误", e.message); }
         };
 
-        // --- RESTORED FUNCTIONS ---
         function toggleSort(isPublicStr, column) {
             const isPublic = (isPublicStr === 'true');
             const state = isPublic ? sortState.public : sortState.private;
@@ -633,7 +671,18 @@
             const headerRow = document.getElementById(headerRowId);
             if (!tbody || !headerRow) return;
 
-            const columns = [ { id: 'name', label: '玩家' }, { id: 'score', label: '综合评分' }, { id: 'totalPnL', label: '总盈亏' }, { id: 'avgPnL', label: '平均盈亏' }, { id: 'winRate', label: '胜率' }, { id: 'volatility', label: '波动率' }, { id: 'sharpe', label: 'Sharpe' }, { id: 'maxLosingStreak', label: '连亏' }, { id: 'totalSessions', label: '局数' } ];
+            // Updated columns definition with Tooltips
+            const columns = [
+                { id: 'name', label: '玩家' },
+                { id: 'score', label: '综合评分', tooltip: '基于多维度数据的加权评分 (0-100)。<br><br><span class="opacity-70">权重模型：</span><br>• 夏普比率: 35%<br>• 平均盈亏: 25%<br>• 胜率: 20%<br>• 总场次: 10%<br>• 最大连亏: -10%<br><br><span class="text-green-400">越高越好</span>' },
+                { id: 'totalPnL', label: '总盈亏' },
+                { id: 'avgPnL', label: '平均盈亏' },
+                { id: 'winRate', label: '胜率' },
+                { id: 'volatility', label: '波动率', tooltip: '历史盈亏的标准差。<br>衡量资金曲线的波动程度。<br>数值越低代表发挥越稳健。<br><br><span class="text-green-400">越小越好</span>' },
+                { id: 'sharpe', label: 'SHARPE', tooltip: '夏普比率 = 平均盈亏 / 波动率。<br>衡量风险调整后的收益。<br>代表玩家的技术含金量。<br><br><span class="text-green-400">越高越好</span>' },
+                { id: 'maxLosingStreak', label: '连亏' },
+                { id: 'totalSessions', label: '局数' }
+            ];
             
             headerRow.innerHTML = columns.map(col => {
                 let sortIcon = ''; 
@@ -643,7 +692,18 @@
                     activeClass = 'active-sort text-main'; 
                 }
                 const align = col.id === 'name' ? 'text-left' : 'text-right';
-                return `<th class="px-6 py-3 ${align} text-xs font-medium uppercase tracking-wider sortable ${activeClass} hover:text-main" onclick="toggleSort('${isPublic}', '${col.id}')">${col.label} <span class="sort-icon">${sortIcon}</span></th>`;
+                
+                // Info icon if tooltip exists
+                let infoIcon = '';
+                if (col.tooltip) {
+                    // Safe string escaping for HTML attribute
+                    const safeTip = col.tooltip.replace(/'/g, "&apos;").replace(/"/g, "&quot;");
+                    infoIcon = `<span class="info-icon" onmouseenter="showTooltip(event, '${safeTip}')" onmouseleave="hideTooltip()">i</span>`;
+                }
+
+                return `<th class="px-6 py-3 ${align} text-xs font-medium uppercase tracking-wider sortable ${activeClass} hover:text-main" onclick="toggleSort('${isPublic}', '${col.id}')">
+                            ${col.label}${infoIcon} <span class="sort-icon">${sortIcon}</span>
+                        </th>`;
             }).join('');
 
             if (stats.length === 0) {
