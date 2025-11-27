@@ -50,6 +50,24 @@
         }
         .badge-admin { background-color: #f69d3c; color: #161b22; }
         .badge-private { background-color: #38a169; color: white; }
+        
+        /* Sortable Header Styles */
+        th.sortable {
+            cursor: pointer;
+            user-select: none;
+            transition: background-color 0.2s;
+        }
+        th.sortable:hover {
+            background-color: #30363d;
+        }
+        th.sortable .sort-icon {
+            margin-left: 4px;
+            font-size: 0.8em;
+            color: #8b949e;
+        }
+        th.sortable.active-sort {
+            color: #58a6ff;
+        }
     </style>
 </head>
 <body>
@@ -163,7 +181,7 @@
             </div>
         </div>
 
-        <!-- My Private Sessions List (NEW) -->
+        <!-- My Private Sessions List -->
         <div class="card p-6 rounded-xl mb-8">
             <h2 class="text-xl font-semibold mb-4 border-b border-gray-700 pb-2">🔒 我的私人牌局记录 <span class="badge badge-private">私人数据</span></h2>
             <div class="flex justify-between items-center mb-4">
@@ -177,48 +195,40 @@
 
         <!-- Leaderboard (Scoreboard) (Public) -->
         <div class="card p-6 rounded-xl mb-8">
-            <h2 class="text-xl font-semibold mb-4 border-b border-gray-700 pb-2">📊 总积分榜 <span class="badge badge-admin">公共 Leaderboard</span></h2>
+            <h2 class="text-xl font-semibold mb-4 border-b border-gray-700 pb-2 flex justify-between items-center">
+                <span>📊 总积分榜 <span class="badge badge-admin">公共 Leaderboard</span></span>
+                <span class="text-xs text-gray-500 font-normal">点击表头可排序</span>
+            </h2>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-700 rounded-lg overflow-hidden">
                     <thead class="table-header">
-                        <tr>
-                            <th class="p-3 text-left text-xs font-medium uppercase tracking-wider">玩家</th>
-                            <th class="p-3 text-right text-xs font-medium uppercase tracking-wider">总盈亏 (CNY)</th>
-                            <th class="p-3 text-right text-xs font-medium uppercase tracking-wider">平均盈亏</th>
-                            <th class="p-3 text-right text-xs font-medium uppercase tracking-wider">胜率 (%)</th>
-                            <th class="p-3 text-right text-xs font-medium uppercase tracking-wider">波动率 (CNY)</th>
-                            <th class="p-3 text-right text-xs font-medium uppercase tracking-wider">Sharpe Ratio</th>
-                            <th class="p-3 text-right text-xs font-medium uppercase tracking-wider">最大连亏 (次数)</th>
-                            <th class="p-3 text-center text-xs font-medium uppercase tracking-wider">总局数</th>
+                        <tr id="public-leaderboard-header">
+                            <!-- Headers injected via JS to support sort icons -->
                         </tr>
                     </thead>
                     <tbody id="leaderboard-body" class="divide-y divide-gray-800">
-                        <tr id="leaderboard-placeholder"><td colspan="8" class="p-4 text-center text-gray-400">加载中... 请确保已保存公共牌局数据。</td></tr>
+                        <tr id="leaderboard-placeholder"><td colspan="9" class="p-4 text-center text-gray-400">加载中... 请确保已保存公共牌局数据。</td></tr>
                     </tbody>
                 </table>
             </div>
             <button onclick="loadPublicScoreboard()" class="btn-primary mt-4 p-2 rounded-lg font-semibold bg-gray-600 hover:bg-gray-700">刷新公共积分榜</button>
         </div>
         
-        <!-- My Private Leaderboard (NEW) -->
+        <!-- My Private Leaderboard -->
         <div class="card p-6 rounded-xl">
-            <h2 class="text-xl font-semibold mb-4 border-b border-gray-700 pb-2">👤 我的私人积分榜 <span class="badge badge-private">私人 Leaderboard</span></h2>
+            <h2 class="text-xl font-semibold mb-4 border-b border-gray-700 pb-2 flex justify-between items-center">
+                <span>👤 我的私人积分榜 <span class="badge badge-private">私人 Leaderboard</span></span>
+                <span class="text-xs text-gray-500 font-normal">点击表头可排序</span>
+            </h2>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-700 rounded-lg overflow-hidden">
                     <thead class="table-header">
-                        <tr>
-                            <th class="p-3 text-left text-xs font-medium uppercase tracking-wider">玩家</th>
-                            <th class="p-3 text-right text-xs font-medium uppercase tracking-wider">总盈亏 (CNY)</th>
-                            <th class="p-3 text-right text-xs font-medium uppercase tracking-wider">平均盈亏</th>
-                            <th class="p-3 text-right text-xs font-medium uppercase tracking-wider">胜率 (%)</th>
-                            <th class="p-3 text-right text-xs font-medium uppercase tracking-wider">波动率 (CNY)</th>
-                            <th class="p-3 text-right text-xs font-medium uppercase tracking-wider">Sharpe Ratio</th>
-                            <th class="p-3 text-right text-xs font-medium uppercase tracking-wider">最大连亏 (次数)</th>
-                            <th class="p-3 text-center text-xs font-medium uppercase tracking-wider">总局数</th>
+                        <tr id="private-leaderboard-header">
+                            <!-- Headers injected via JS to support sort icons -->
                         </tr>
                     </thead>
                     <tbody id="private-leaderboard-body" class="divide-y divide-gray-800">
-                        <tr id="private-leaderboard-placeholder"><td colspan="8" class="p-4 text-center text-gray-400">登录后可查看您的私人积分榜。</td></tr>
+                        <tr id="private-leaderboard-placeholder"><td colspan="9" class="p-4 text-center text-gray-400">登录后可查看您的私人积分榜。</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -230,27 +240,30 @@
     <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, onSnapshot, doc, setDoc, getDoc, deleteDoc, getDocs, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- Authorization Configuration ---
-        // ⚠️ 关键步骤 1: 请将此邮箱替换为您自己的 Google 账户邮箱，该账户将拥有编辑公共数据的权限
-        const ADMIN_EMAIL = 'xirry.xyz@gmail.com'; // **已为您更新**
+        const ADMIN_EMAIL = 'xirry.xyz@gmail.com'; 
         let isAdmin = false; 
 
-        // Global variables for Firebase services
         let db;
         let auth;
-        let userId = 'anonymous'; // Default user ID
+        let userId = 'anonymous'; 
 
-        // Session Data (Config is now local and per-session)
         let sessionPlayers = [];
+        
+        // Data Cache for Sorting
+        let publicLeaderboardData = [];
+        let privateLeaderboardData = [];
+        
+        // Sorting State
+        let sortState = {
+            public: { column: 'score', direction: 'desc' },
+            private: { column: 'score', direction: 'desc' }
+        };
 
-        // --- Firebase Configuration ---
-        // ⚠️ 关键步骤 2: 这是您提供的配置。请用您在 Firebase 控制台获取的完整、正确的 API 密钥替换 'REPLACE_WITH_YOUR_API_KEY'
         const MANUAL_FIREBASE_CONFIG = {
-            apiKey: "AIzaSyD4mEhWsVxOi5F1PIMCk1ykAs6TOj8prUQ", // <-- 请替换此处的 API 密钥
+            apiKey: "AIzaSyD4mEhWsVxOi5F1PIMCk1ykAs6TOj8prUQ", 
             authDomain: "de1de-calculator.firebaseapp.com",
             projectId: "de1de-calculator",
             storageBucket: "de1de-calculator.firebasestorage.app",
@@ -258,20 +271,13 @@
             appId: "1:1076456073032:web:5402bb2cb74e6940bf757d"
         };
         
-        // App ID (MANDATORY)
-        // 在 Canvas 环境中，使用 __app_id；否则，使用 Firebase project ID 作为默认 App ID
         const appId = typeof __app_id !== 'undefined' ? __app_id : MANUAL_FIREBASE_CONFIG.projectId;
-
-        // 优先检查 Canvas 注入的配置 (__firebase_config)，否则使用手动配置 (MANUAL_FIREBASE_CONFIG)
         const firebaseConfig = 
             typeof __firebase_config !== 'undefined' && __firebase_config.length > 0
             ? JSON.parse(__firebase_config) 
             : MANUAL_FIREBASE_CONFIG;
         
-        // --- End of Configuration ---
-
-
-        // Expose global functions to the window object
+        // Expose global functions
         window.addPlayerToSession = addPlayerToSession;
         window.removePlayer = removePlayer;
         window.calculateSettlement = calculateSettlement;
@@ -281,90 +287,46 @@
         window.deleteSession = deleteSession;
         window.signInWithGoogle = signInWithGoogle;
         window.signOutUser = signOutUser;
-        // New window functions for private/public data loading
         window.loadPublicScoreboard = () => loadScoreboard(true);
         window.loadPrivateScoreboard = () => loadScoreboard(false);
         window.loadPastSessions = () => loadSessions(true);
         window.loadPrivateSessions = () => loadSessions(false);
-        window.loadScoreboard = window.loadPublicScoreboard; // Keep original for default calls
-
+        window.toggleSort = toggleSort;
 
         // --- Core Functions ---
-
-        /**
-         * 获取当前牌局配置
-         */
         function getCurrentSessionConfig() {
             const chips = parseFloat(document.getElementById('chipsPerEntry').value);
             const cny = parseFloat(document.getElementById('cnyPerEntry').value);
-            
-            if (isNaN(chips) || chips <= 0 || isNaN(cny) || cny <= 0) {
-                 // Fallback to defaults or validation fail
-                 return null;
-            }
-            
+            if (isNaN(chips) || chips <= 0 || isNaN(cny) || cny <= 0) return null;
             return { chipsPerEntry: chips, cnyPerEntry: cny };
         }
 
-        /**
-         * 获取公共 Firestore 集合引用 (Admin read/write, Others read)
-         */
         function getPublicCollection(collectionName) {
-            // Firestore Security Rules path: /artifacts/{appId}/public/data/{your_collection_name}
             return collection(db, `artifacts/${appId}/public/data/${collectionName}`);
         }
         
-        /**
-         * 获取私人 Firestore 集合引用 (Authenticated user read/write)
-         */
         function getPrivateCollection(collectionName) {
-            // Requires userId to be set
-            if (userId === 'anonymous' || !db) {
-                console.error("Cannot access private collection: User is anonymous or DB not initialized.");
-                return null; 
-            }
-            // Firestore Security Rules path: /artifacts/{appId}/users/{userId}/{your_collection_name}
-            // 注意: userId 必须和认证用户的 UID 匹配，才能通过 Security Rules
-            const colPath = `artifacts/${appId}/users/${userId}/${collectionName}`;
-            return collection(db, colPath);
+            if (userId === 'anonymous' || !db) return null; 
+            return collection(db, `artifacts/${appId}/users/${userId}/${collectionName}`);
         }
 
-        /**
-         * 切换编辑界面的启用/禁用状态
-         * @param {boolean} isLoggedIn - 用户是否已登录
-         */
-        function toggleEditingUI(isLoggedIn) {
-            // Session input and config are now for ANY logged-in user
-            const sessionInputElements = [
-                'playerName', 'playerEntries', 'playerFinalChips', 'add-player-btn', 
-                'chipsPerEntry', 'cnyPerEntry'
-            ];
-            
-            sessionInputElements.forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.disabled = !isLoggedIn;
-            });
-            
-            // Session actions are for ANY logged-in user
+        function toggleEditingUI(canEdit) {
+            const sessionInputElements = ['playerName', 'playerEntries', 'playerFinalChips', 'add-player-btn', 'chipsPerEntry', 'cnyPerEntry'];
+            sessionInputElements.forEach(id => { const el = document.getElementById(id); if (el) el.disabled = !canEdit; });
             const sessionActionElements = ['save-session-btn', 'clear-session-btn'];
             sessionActionElements.forEach(id => {
                 const el = document.getElementById(id);
                 if (el) {
-                    el.disabled = !isLoggedIn;
+                    el.disabled = !canEdit;
                     if (el.tagName === 'BUTTON') {
-                        el.classList.toggle('opacity-50', !isLoggedIn);
-                        el.classList.toggle('cursor-not-allowed', !isLoggedIn);
+                        el.classList.toggle('opacity-50', !canEdit);
+                        el.classList.toggle('cursor-not-allowed', !canEdit);
                     }
                 }
             });
-
-            // 重新渲染列表以更新移除按钮的状态
             updateSessionSummary();
         }
 
-        /**
-         * Google 登录
-         */
         async function signInWithGoogle() {
             if (!auth) return;
             const provider = new GoogleAuthProvider();
@@ -372,82 +334,102 @@
                 provider.setCustomParameters({ prompt: 'select_account' });
                 await signInWithPopup(auth, provider);
             } catch (error) {
-                console.error("Google Sign-In failed:", error);
-                let errorMessage = `Google 登录出错: ${error.message}`;
-                if (error.code === 'auth/api-key-not-valid') {
-                     errorMessage = `API 密钥无效。请检查 index.html 文件中的 'apiKey' 配置是否完整且正确。`;
-                }
-                alertModal("登录失败", errorMessage);
+                alertModal("登录失败", error.message);
             }
         }
 
-        /**
-         * 退出登录
-         */
         async function signOutUser() {
             if (!auth) return;
-            try {
-                await signOut(auth);
-                alertModal("操作成功", "您已成功退出登录。");
-            } catch (error) {
-                console.error("Sign Out failed:", error);
-                alertModal("操作失败", `退出登录出错: ${error.message}`);
-            }
+            try { 
+                await signOut(auth); 
+                alertModal("操作成功", "您已成功退出登录。"); 
+                // Sign out leaves user null, onAuthStateChanged should ideally handle re-anon sign-in if needed,
+                // but for simplicity, we let the user stay on the page as guest or refresh.
+            } catch (error) { alertModal("操作失败", error.message); }
         }
 
-
-        /**
-         * 初始化Firebase和认证
-         */
         async function initializeFirebase() {
-            // 检查 API 密钥是否已替换
             if (firebaseConfig.apiKey === 'REPLACE_WITH_YOUR_API_KEY') {
                 document.getElementById('auth-status').textContent = '错误: 请在代码中替换 API 密钥后再部署。';
-                document.getElementById('auth-button').disabled = true;
-                return;
-            }
-
-            if (!firebaseConfig || !firebaseConfig.projectId) {
-                console.error("Firebase config is missing or incomplete.");
-                document.getElementById('auth-status').textContent = '错误: Firebase配置缺失或无效。请在代码中检查配置。';
                 return;
             }
             try {
-                // setLogLevel('Debug'); // For debugging in console
                 const app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
                 db = getFirestore(app);
+
+                // --- FIX: Rule 3 Compliance (Auth First) ---
+                const initAuth = async () => {
+                    try {
+                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                            await signInWithCustomToken(auth, __initial_auth_token);
+                        } else {
+                            // If no user is persisted, sign in anonymously to allow reading public data
+                             await signInAnonymously(auth);
+                        }
+                    } catch (e) {
+                        console.error("Auth init error:", e);
+                    }
+                };
+                // We call this but don't strictly await it blocking the UI, 
+                // because onAuthStateChanged will handle the flow once it resolves.
+                initAuth(); 
                 
-                // 监听认证状态变化
                 onAuthStateChanged(auth, (user) => {
                     const authButton = document.getElementById('auth-button');
                     const authStatus = document.getElementById('auth-status');
                     const adminStatus = document.getElementById('admin-status');
                     const userIdDisplay = document.getElementById('user-id-display');
-                    
-                    const isLoggedIn = !!user;
-                    let currentIsAdmin = false;
 
-                    if (isLoggedIn) {
+                    if (user) {
+                        // User is authenticated (either Anonymous or Google)
                         userId = user.uid;
-                        currentIsAdmin = (user.email === ADMIN_EMAIL);
+                        const isAnon = user.isAnonymous;
+                        const email = user.email;
                         
-                        authStatus.textContent = `当前用户: ${user.email || user.uid}`;
+                        // Check Admin (Only valid if not anonymous and matches email)
+                        let currentIsAdmin = false;
+                        if (!isAnon && email === ADMIN_EMAIL) {
+                            currentIsAdmin = true;
+                        }
+                        isAdmin = currentIsAdmin;
+
+                        // UI Logic
                         userIdDisplay.textContent = userId;
-                        authButton.textContent = '退出登录';
-                        authButton.onclick = signOutUser;
-                        authButton.disabled = false;
-                        authButton.classList.remove('bg-blue-600', 'hover:bg-blue-700');
-                        authButton.classList.add('bg-gray-600', 'hover:bg-gray-700');
                         
-                        // 检查 ADMIN_EMAIL 是否已配置，并设置 isAdmin 状态
-                        if (ADMIN_EMAIL === 'YOUR_ADMIN_EMAIL@gmail.com') {
-                            isAdmin = false;
-                            adminStatus.textContent = '⚠️ 警告: ADMIN_EMAIL 尚未配置。管理员权限已禁用。';
-                            adminStatus.classList.remove('text-green-400', 'text-yellow-400');
-                            adminStatus.classList.add('text-red-400');
+                        if (isAnon) {
+                            // Guest / Anonymous Mode
+                            authStatus.textContent = '访客模式 (只读)';
+                            adminStatus.textContent = '🔒 请登录以编辑数据或查看私人记录。';
+                            adminStatus.classList.add('text-yellow-400');
+                            adminStatus.classList.remove('text-green-400', 'text-red-400');
+                            
+                            authButton.textContent = '使用 Google 登录';
+                            authButton.onclick = signInWithGoogle;
+                            authButton.disabled = false;
+                            authButton.classList.add('bg-blue-600', 'hover:bg-blue-700');
+                            authButton.classList.remove('bg-gray-600', 'hover:bg-gray-700');
+
+                            // Load ONLY Public Data
+                            loadScoreboard(true);
+                            loadSessions(true);
+
+                            // Clear Private Data
+                            document.getElementById('private-sessions-list').innerHTML = '<p class="text-center text-gray-500">登录后可查看和编辑您的私人牌局。</p>';
+                            document.getElementById('private-leaderboard-body').innerHTML = '<tr><td colspan="9" class="p-4 text-center text-gray-400">登录后可查看您的私人积分榜。</td></tr>';
+                            
+                            // Disable Editing
+                            toggleEditingUI(false);
+
                         } else {
-                            isAdmin = currentIsAdmin;
+                            // Full User Mode
+                            authStatus.textContent = `当前用户: ${email}`;
+                            authButton.textContent = '退出登录';
+                            authButton.onclick = signOutUser;
+                            authButton.disabled = false;
+                            authButton.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                            authButton.classList.add('bg-gray-600', 'hover:bg-gray-700');
+                            
                             if (isAdmin) {
                                 adminStatus.textContent = '👑 您是管理员，拥有公共数据编辑和删除权限。';
                                 adminStatus.classList.remove('text-yellow-400', 'text-red-400');
@@ -457,75 +439,56 @@
                                 adminStatus.classList.add('text-yellow-400');
                                 adminStatus.classList.remove('text-green-400', 'text-red-400');
                             }
+
+                            // Load ALL Data
+                            loadScoreboard(true); 
+                            loadSessions(true); 
+                            loadScoreboard(false); 
+                            loadSessions(false); 
+                            
+                            // Enable Editing
+                            toggleEditingUI(true); 
                         }
 
-                        // 加载数据并切换UI
-                        loadScoreboard(true); 
-                        loadSessions(true); 
-                        loadScoreboard(false); // Load private scoreboard
-                        loadSessions(false); // Load private sessions
-                        toggleEditingUI(isLoggedIn); 
-
                     } else {
+                        // User is null (Logged out or initializing)
+                        // Do NOT attempt to load data here to avoid Permission Denied
                         userId = 'anonymous';
                         isAdmin = false;
                         
-                        authStatus.textContent = '未登录。请使用 Google 账户登录。';
+                        authStatus.textContent = '正在连接...';
+                        adminStatus.textContent = '';
+                        userIdDisplay.textContent = '...';
                         
-                        if (ADMIN_EMAIL === 'YOUR_ADMIN_EMAIL@gmail.com') {
-                            adminStatus.textContent = '⚠️ 警告: ADMIN_EMAIL 尚未配置。';
-                        } else {
-                            adminStatus.textContent = '🔒 编辑功能已锁定。';
-                        }
-                        adminStatus.classList.add('text-red-400');
-                        adminStatus.classList.remove('text-green-400', 'text-yellow-400');
-                        userIdDisplay.textContent = 'N/A';
-
+                        // Ensure buttons are reset
                         authButton.textContent = '使用 Google 登录';
                         authButton.onclick = signInWithGoogle;
-                        authButton.disabled = false;
-                        authButton.classList.add('bg-blue-600', 'hover:bg-blue-700');
-                        authButton.classList.remove('bg-gray-600', 'hover:bg-gray-700');
-
-                        // 即使未登录也尝试加载公共数据 (如果安全规则允许)
-                        loadScoreboard(true);
-                        loadSessions(true);
                         
-                        // 清空私人数据
-                        document.getElementById('private-sessions-list').innerHTML = '<p class="text-center text-gray-500" id="private-sessions-loading-status">登录后可查看和编辑您的私人牌局。</p>';
-                        document.getElementById('private-leaderboard-body').innerHTML = '<tr id="private-leaderboard-placeholder"><td colspan="8" class="p-4 text-center text-gray-400">登录后可查看您的私人积分榜。</td></tr>';
-
-                        toggleEditingUI(isLoggedIn); 
+                        // Disable UI
+                        toggleEditingUI(false);
                     }
                 });
-
             } catch (error) {
-                console.error("Firebase Initialization or Auth Failed:", error);
-                document.getElementById('auth-status').textContent = '错误: Firebase初始化失败。';
+                console.error("Firebase Init Failed:", error);
             }
         }
         
-        /**
-         * 添加玩家到当前牌局
-         */
         function addPlayerToSession() {
-            if (userId === 'anonymous') {
-                alertModal("操作失败", "请先登录才能添加玩家数据。");
-                return;
+            // Check auth state properly
+            if (!auth.currentUser || auth.currentUser.isAnonymous) { 
+                alertModal("操作失败", "请先登录才能添加玩家数据。"); 
+                return; 
             }
             
             const currentConfig = getCurrentSessionConfig();
-            if (!currentConfig) {
-                alertModal("输入错误", "请确保每手买入的筹码数和CNY都为有效的正数。");
-                return;
-            }
+            if (!currentConfig) { alertModal("输入错误", "配置无效。"); return; }
 
             const name = document.getElementById('playerName').value.trim();
             const entries = parseFloat(document.getElementById('playerEntries').value);
             const finalChips = parseFloat(document.getElementById('playerFinalChips').value);
 
             if (!name || isNaN(entries) || isNaN(finalChips) || finalChips < 0) {
-                alertModal("输入错误", "请确保玩家姓名不为空，净买入次数是有效的数字，且最终筹码为有效的非负数字。");
+                alertModal("输入错误", "请检查输入数据。");
                 return;
             }
             
@@ -534,54 +497,35 @@
             const pnlCNY = pnlChips * (currentConfig.cnyPerEntry / currentConfig.chipsPerEntry);
 
             const existingIndex = sessionPlayers.findIndex(p => p.name === name);
-
             const newPlayer = {
-                id: Date.now() + Math.random(), // Unique ID for table row
-                name,
-                entries,
+                id: Date.now() + Math.random(),
+                name, entries,
                 totalBuyInChips: Math.round(totalBuyInChips),
                 finalChips: Math.round(finalChips),
                 pnlChips: Math.round(pnlChips),
                 pnlCNY: parseFloat(pnlCNY.toFixed(2)),
-                adjustedPnLCNY: parseFloat(pnlCNY.toFixed(2)), // Initial value before adjustment
-                sessionConfig: currentConfig // Embed config for reference
+                adjustedPnLCNY: parseFloat(pnlCNY.toFixed(2)),
+                sessionConfig: currentConfig
             };
 
-            if (existingIndex !== -1) {
-                sessionPlayers[existingIndex] = newPlayer;
-            } else {
-                sessionPlayers.push(newPlayer);
-            }
+            if (existingIndex !== -1) sessionPlayers[existingIndex] = newPlayer;
+            else sessionPlayers.push(newPlayer);
 
-            // Clear input fields for next entry
             document.getElementById('playerName').value = '';
             document.getElementById('playerEntries').value = '2';
             document.getElementById('playerFinalChips').value = '3000';
-
             updateSessionSummary();
         }
         
-        /**
-         * 移除玩家
-         */
         function removePlayer(id) {
-            if (userId === 'anonymous') {
-                alertModal("操作失败", "请先登录才能移除玩家。");
-                return;
-            }
+            if (!auth.currentUser || auth.currentUser.isAnonymous) return;
             sessionPlayers = sessionPlayers.filter(p => p.id !== id);
             updateSessionSummary();
         }
 
-        /**
-         * 根据用户指定的优先级调整盈亏以抹平筹码差额
-         */
         function adjustDiscrepancy(players) {
             let totalPnL = players.reduce((sum, p) => sum + p.pnlCNY, 0);
-
-            if (Math.abs(totalPnL) < 0.01) {
-                return players.map(p => ({ ...p, adjustedPnLCNY: p.pnlCNY }));
-            }
+            if (Math.abs(totalPnL) < 0.01) return players.map(p => ({ ...p, adjustedPnLCNY: p.pnlCNY }));
 
             const adjustedPlayers = players.map(p => ({ ...p, adjustedPnLCNY: p.pnlCNY }));
             const adjustmentMagnitude = Math.abs(totalPnL); 
@@ -589,44 +533,24 @@
             if (totalPnL > 0) { 
                 const winners = adjustedPlayers.filter(p => p.adjustedPnLCNY > 0);
                 const totalWinMagnitude = winners.reduce((sum, p) => sum + p.adjustedPnLCNY, 0);
-                
-                if (totalWinMagnitude > 0) {
-                    winners.forEach(p => {
-                        const ratio = p.adjustedPnLCNY / totalWinMagnitude;
-                        p.adjustedPnLCNY -= adjustmentMagnitude * ratio; 
-                    });
-                }
-            
+                if (totalWinMagnitude > 0) winners.forEach(p => { p.adjustedPnLCNY -= adjustmentMagnitude * (p.adjustedPnLCNY / totalWinMagnitude); });
             } else { 
                 const losers = adjustedPlayers.filter(p => p.adjustedPnLCNY < 0);
                 const totalLossMagnitude = losers.reduce((sum, p) => sum + Math.abs(p.adjustedPnLCNY), 0);
-                
-                if (totalLossMagnitude > 0) {
-                    losers.forEach(p => {
-                        const ratio = Math.abs(p.adjustedPnLCNY) / totalLossMagnitude;
-                        p.adjustedPnLCNY += adjustmentMagnitude * ratio;
-                    });
-                }
+                if (totalLossMagnitude > 0) losers.forEach(p => { p.adjustedPnLCNY += adjustmentMagnitude * (Math.abs(p.adjustedPnLCNY) / totalLossMagnitude); });
             }
-            
             return adjustedPlayers.map(p => ({ ...p, adjustedPnLCNY: parseFloat(p.adjustedPnLCNY.toFixed(2)) }));
         }
 
-        /**
-         * 更新当前牌局的数据表格和汇总信息
-         */
         function updateSessionSummary() {
             sessionPlayers = adjustDiscrepancy(sessionPlayers.map(p => ({ ...p, pnlCNY: p.pnlCNY })));
-
             const tbody = document.getElementById('session-data-body');
             const saveBtn = document.getElementById('save-session-btn');
             tbody.innerHTML = '';
             
-            let totalBuyInChips = 0;
-            let totalFinalChips = 0;
-            let totalPnLCNY = 0;
-            
-            const isEditingEnabled = userId !== 'anonymous'; // Any logged-in user can edit session
+            let totalBuyInChips = 0, totalFinalChips = 0, totalPnLCNY = 0;
+            // Check edit permission based on auth state
+            const isEditingEnabled = auth && auth.currentUser && !auth.currentUser.isAnonymous;
 
             if (sessionPlayers.length === 0) {
                 tbody.innerHTML = '<tr id="session-placeholder"><td colspan="7" class="p-4 text-center text-gray-400">请添加玩家数据...</td></tr>';
@@ -635,545 +559,189 @@
             } else {
                 saveBtn.disabled = !isEditingEnabled;
                 document.getElementById('clear-session-btn').disabled = !isEditingEnabled;
-                
                 sessionPlayers.forEach(p => {
                     totalBuyInChips += p.totalBuyInChips;
                     totalFinalChips += p.finalChips;
                     totalPnLCNY += p.adjustedPnLCNY;
-
                     const pnlClass = p.adjustedPnLCNY > 0.01 ? 'text-win' : p.adjustedPnLCNY < -0.01 ? 'text-loss' : 'text-neutral';
-                    
-                    const removeBtnHtml = isEditingEnabled ? `
-                        <button onclick="removePlayer(${p.id})" class="text-red-500 hover:text-red-400 text-sm font-semibold">移除</button>
-                    ` : `
-                        <span class="text-gray-600 text-sm cursor-not-allowed">锁定</span>
-                    `;
-
-                    const row = `
-                        <tr class="hover:bg-gray-800/70 transition-colors">
-                            <td class="p-3 font-semibold">${p.name}</td>
-                            <td class="p-3 text-right">${p.totalBuyInChips}</td>
-                            <td class="p-3 text-right">${p.finalChips}</td>
-                            <td class="p-3 text-right ${pnlClass}">${p.pnlChips}</td>
-                            <td class="p-3 text-right ${pnlClass}">${p.pnlCNY.toFixed(2)} CNY</td>
-                            <td class="p-3 text-right ${pnlClass} font-bold">${p.adjustedPnLCNY.toFixed(2)} CNY</td>
-                            <td class="p-3 text-center">${removeBtnHtml}</td>
-                        </tr>
-                    `;
-                    tbody.innerHTML += row;
+                    const removeBtnHtml = isEditingEnabled ? `<button onclick="removePlayer(${p.id})" class="text-red-500 hover:text-red-400 text-sm font-semibold">移除</button>` : `<span class="text-gray-600 text-sm cursor-not-allowed">锁定</span>`;
+                    tbody.innerHTML += `<tr class="hover:bg-gray-800/70 transition-colors"><td class="p-3 font-semibold">${p.name}</td><td class="p-3 text-right">${p.totalBuyInChips}</td><td class="p-3 text-right">${p.finalChips}</td><td class="p-3 text-right ${pnlClass}">${p.pnlChips}</td><td class="p-3 text-right ${pnlClass}">${p.pnlCNY.toFixed(2)} CNY</td><td class="p-3 text-right ${pnlClass} font-bold">${p.adjustedPnLCNY.toFixed(2)} CNY</td><td class="p-3 text-center">${removeBtnHtml}</td></tr>`;
                 });
             }
 
             document.getElementById('total-buy-in').textContent = Math.round(totalBuyInChips);
             document.getElementById('total-final-chips').textContent = Math.round(totalFinalChips);
-            const chipDiscrepancy = Math.round(totalFinalChips - totalBuyInChips);
-            document.getElementById('chip-discrepancy').textContent = chipDiscrepancy;
-            
+            document.getElementById('chip-discrepancy').textContent = Math.round(totalFinalChips - totalBuyInChips);
             const cnyDiscrepancyElement = document.getElementById('cny-discrepancy');
             cnyDiscrepancyElement.textContent = `${totalPnLCNY.toFixed(2)} CNY`;
             cnyDiscrepancyElement.className = totalPnLCNY > 0.01 ? 'font-bold text-win' : totalPnLCNY < -0.01 ? 'font-bold text-loss' : 'font-bold text-green-400';
             
-            if (document.getElementById('transfer-solution').classList.contains('block')) {
-                calculateTransfers(sessionPlayers.map(p => ({ name: p.name, pnl: p.adjustedPnLCNY })));
-            }
+            if (document.getElementById('transfer-solution').classList.contains('block')) calculateSettlement();
         }
         
-        /**
-         * 计算最小转账方案 (Schrage/Greedy Algorithm)
-         */
         function calculateSettlement() {
-            if (sessionPlayers.length === 0) {
-                 alertModal("结算失败", "请先添加玩家数据。");
-                return;
-            }
-
-            const adjustedPlayers = sessionPlayers.map(p => ({
-                name: p.name,
-                pnl: p.adjustedPnLCNY
-            }));
-
-            const transfers = calculateTransfers(adjustedPlayers);
+            if (sessionPlayers.length === 0) { alertModal("结算失败", "请先添加玩家数据。"); return; }
+            const transfers = calculateTransfers(sessionPlayers.map(p => ({ name: p.name, pnl: p.adjustedPnLCNY })));
             const transferList = document.getElementById('transfer-list');
             const solutionDiv = document.getElementById('transfer-solution');
             transferList.innerHTML = '';
-
-            if (transfers.length === 0) {
-                transferList.innerHTML = `<li class="text-green-300">🎉 所有玩家盈亏为零，无需转账！</li>`;
-            } else {
-                transfers.forEach(t => {
-                    const listItem = `<li><span class="font-bold">${t.from}</span> → <span class="font-bold">${t.to}</span>: <span class="text-green-300">${t.amount.toFixed(2)} CNY</span></li>`;
-                    transferList.innerHTML += listItem;
-                });
-            }
-
-            solutionDiv.classList.remove('hidden');
-            solutionDiv.classList.add('block');
+            if (transfers.length === 0) transferList.innerHTML = `<li class="text-green-300">🎉 所有玩家盈亏为零，无需转账！</li>`;
+            else transfers.forEach(t => { transferList.innerHTML += `<li><span class="font-bold">${t.from}</span> → <span class="font-bold">${t.to}</span>: <span class="text-green-300">${t.amount.toFixed(2)} CNY</span></li>`; });
+            solutionDiv.classList.remove('hidden'); solutionDiv.classList.add('block');
         }
 
         function calculateTransfers(players) {
             const transfers = [];
-            
-            let winners = players.filter(p => p.pnl > 0).map(p => ({ ...p, pnl: parseFloat(p.pnl.toFixed(2)) }));
-            let losers = players.filter(p => p.pnl < 0).map(p => ({ ...p, pnl: parseFloat(p.pnl.toFixed(2)) }));
-
-            winners.sort((a, b) => b.pnl - a.pnl);
-            losers.sort((a, b) => a.pnl - b.pnl);
-
+            let winners = players.filter(p => p.pnl > 0).map(p => ({ ...p, pnl: parseFloat(p.pnl.toFixed(2)) })).sort((a, b) => b.pnl - a.pnl);
+            let losers = players.filter(p => p.pnl < 0).map(p => ({ ...p, pnl: parseFloat(p.pnl.toFixed(2)) })).sort((a, b) => a.pnl - b.pnl);
             while (winners.length > 0 && losers.length > 0) {
-                const winner = winners[0];
-                const loser = losers[0];
-
-                const debt = Math.abs(loser.pnl);
-                const credit = winner.pnl;
-
-                const amount = Math.min(debt, credit);
-
-                transfers.push({
-                    from: loser.name,
-                    to: winner.name,
-                    amount: amount
-                });
-
-                winner.pnl -= amount;
-                loser.pnl += amount; 
-
-                if (Math.abs(winner.pnl) < 0.01) {
-                    winners.shift();
-                }
-                if (Math.abs(loser.pnl) < 0.01) {
-                    losers.shift();
-                }
+                const winner = winners[0], loser = losers[0];
+                const amount = Math.min(Math.abs(loser.pnl), winner.pnl);
+                transfers.push({ from: loser.name, to: winner.name, amount: amount });
+                winner.pnl -= amount; loser.pnl += amount;
+                if (Math.abs(winner.pnl) < 0.01) winners.shift();
+                if (Math.abs(loser.pnl) < 0.01) losers.shift();
             }
             return transfers;
         }
 
-        /**
-         * 将当前牌局数据保存到Firestore (根据角色决定公共或私人)
-         */
         async function saveSessionData() {
-            if (userId === 'anonymous') {
-                alertModal("保存失败", "请先登录才能保存牌局数据。");
-                return;
-            }
-            if (sessionPlayers.length === 0) {
-                alertModal("保存失败", "当前牌局没有玩家数据。");
-                return;
-            }
-            if (!db) {
-                alertModal("保存失败", "数据库未连接或认证失败。");
-                return;
-            }
-            
+            if (!auth.currentUser || auth.currentUser.isAnonymous) { alertModal("保存失败", "请先登录。"); return; }
+            if (sessionPlayers.length === 0) { alertModal("保存失败", "没有玩家数据。"); return; }
             const currentConfig = getCurrentSessionConfig();
-            if (!currentConfig) {
-                alertModal("保存失败", "请确保本局配置 (筹码/CNY) 为有效的正数。");
-                return;
-            }
+            if (!currentConfig) { alertModal("保存失败", "配置无效。"); return; }
 
-            // Determine storage location based on user role
-            // Public save is only if Admin and they choose to save to public
             const isSavingPublic = isAdmin;
             const sessionsCol = isSavingPublic ? getPublicCollection('sessions') : getPrivateCollection('private-sessions');
             const scoreboardCol = isSavingPublic ? getPublicCollection('scoreboard') : getPrivateCollection('private-scoreboard');
             const successMessage = isSavingPublic ? '公共牌局' : '私人牌局';
-            const loadSessionsFunc = isSavingPublic ? window.loadPastSessions : window.loadPrivateSessions;
-            const loadScoreboardFunc = isSavingPublic ? window.loadPublicScoreboard : window.loadPrivateScoreboard;
+            const loadFunc = isSavingPublic ? () => { window.loadPublicScoreboard(); window.loadPastSessions(); } : () => { window.loadPrivateScoreboard(); window.loadPrivateSessions(); };
 
-            if (!sessionsCol || !scoreboardCol) {
-                alertModal("保存失败", "无法获取存储路径，请检查登录状态。");
-                return;
-            }
+            if (!sessionsCol || !scoreboardCol) { alertModal("保存失败", "无法获取存储路径。"); return; }
 
-            const sessionId = Date.now().toString(); // 使用时间戳作为唯一ID
-            const sessionData = {
-                id: sessionId, 
-                date: new Date().toISOString(),
-                config: currentConfig, // Save current session's config
-                playerResults: sessionPlayers.map(p => ({
-                    name: p.name,
-                    pnlCNY: p.adjustedPnLCNY,
-                    isWin: p.adjustedPnLCNY > 0.01
-                }))
-            };
-
-            const sessionRef = doc(sessionsCol, sessionId);
-            try {
-                await setDoc(sessionRef, sessionData);
-            } catch (e) {
-                console.error(`Error saving ${successMessage} data:`, e);
-                // 修复这里的错误提示，使其能区分公共和私人数据的权限问题
-                let errorMessage = `保存${successMessage}数据时出错: ${e.message}`;
-                if (e.code === 'permission-denied') {
-                    if (isSavingPublic) {
-                         errorMessage += "<br><br>🚨 **权限错误 (Permission Denied)** 🚨<br>这通常意味着您的 Firebase Security Rules 不允许当前用户写入公共数据。";
-                    } else {
-                         errorMessage += `<br><br>🚨 **权限错误 (Permission Denied)** 🚨<br>
-                            这通常意味着您的 Firebase Security Rules 不允许当前用户写入其私人数据。
-                            请检查您的 Firestore Rules，确保已认证用户可以写入路径 
-                            <code>/artifacts/{appId}/users/{userId}/{document=**}</code>。`;
-                    }
-                }
-                alertModal("保存失败", errorMessage);
-                return;
-            }
+            const sessionId = Date.now().toString();
+            const sessionData = { id: sessionId, date: new Date().toISOString(), config: currentConfig, playerResults: sessionPlayers.map(p => ({ name: p.name, pnlCNY: p.adjustedPnLCNY, isWin: p.adjustedPnLCNY > 0.01 })) };
 
             try {
-                 await runTransaction(db, async (transaction) => {
-                    const updates = new Map(); 
-
+                await setDoc(doc(sessionsCol, sessionId), sessionData);
+                await runTransaction(db, async (transaction) => {
+                    const updates = new Map();
                     for (const player of sessionPlayers) {
-                        // The scoreboard (public or private) tracks player history
                         const playerRef = doc(scoreboardCol, player.name);
-                        
-                        const docSnapshot = await transaction.get(playerRef); 
-                        
-                        const newHistoryEntry = { sessionId: sessionId, date: sessionData.date, pnl: player.adjustedPnLCNY };
+                        const docSnapshot = await transaction.get(playerRef);
                         let history = [];
-
                         if (docSnapshot.exists()) {
                             const data = docSnapshot.data();
-                            if (data.history && Array.isArray(data.history)) {
-                                history = data.history.filter(h => h.sessionId !== sessionId); // 确保没有重复记录
-                            }
+                            if (data.history && Array.isArray(data.history)) history = data.history.filter(h => h.sessionId !== sessionId);
                         }
-                        
-                        history.push(newHistoryEntry);
-                        
-                        updates.set(player.name, {
-                            ref: playerRef,
-                            data: {
-                                name: player.name,
-                                history: history,
-                            }
-                        });
+                        history.push({ sessionId: sessionId, date: sessionData.date, pnl: player.adjustedPnLCNY });
+                        updates.set(player.name, { ref: playerRef, data: { name: player.name, history: history } });
                     }
-                    
-                    for (const update of updates.values()) {
-                        transaction.set(update.ref, update.data, { merge: true });
-                    }
+                    for (const update of updates.values()) transaction.set(update.ref, update.data, { merge: true });
                 });
-
-                alertModal("保存成功", `${successMessage}已成功保存并更新积分榜数据。`);
+                alertModal("保存成功", `${successMessage}已保存。`);
                 clearSession();
-                loadScoreboardFunc();
-                loadSessionsFunc();
-
+                loadFunc();
             } catch (e) {
-                console.error(`Error updating ${successMessage} scoreboard in transaction:`, e);
-                
-                // 修复这里的事务错误提示
-                let errorMessage = `更新${successMessage}积分榜时出错 (事务失败): ${e.message}`;
-                if (e.code === 'permission-denied') {
-                    if (isSavingPublic) {
-                         errorMessage += "<br><br>🚨 **权限错误 (Permission Denied)** 🚨<br>这通常意味着您的 Firebase Security Rules 不允许当前用户写入公共数据。";
-                    } else {
-                         errorMessage += `<br><br>🚨 **权限错误 (Permission Denied)** 🚨<br>
-                            这通常意味着您的 Firebase Security Rules 不允许当前用户写入其私人数据。
-                            请检查您的 Firestore Rules，确保已认证用户可以写入路径 
-                            <code>/artifacts/{appId}/users/{userId}/{document=**}</code>。`;
-                    }
-                }
-                alertModal("保存失败", errorMessage);
+                console.error(e);
+                alertModal("保存失败", e.message);
             }
         }
 
-        /**
-         * 清空当前牌局数据
-         */
         function clearSession() {
-            if (userId === 'anonymous') {
-                alertModal("操作失败", "请先登录才能清空牌局。");
-                return;
-            }
+            if (!auth.currentUser || auth.currentUser.isAnonymous) return;
             sessionPlayers = [];
-            document.getElementById('transfer-solution').classList.remove('block');
             document.getElementById('transfer-solution').classList.add('hidden');
             updateSessionSummary();
         }
 
-        // --- Session Management ---
-
-        /**
-         * 加载并显示历史牌局
-         * @param {boolean} isPublic - 是否加载公共牌局 (true) 还是私人牌局 (false)
-         */
         async function loadSessions(isPublic = true) {
             const sessionsCol = isPublic ? getPublicCollection('sessions') : getPrivateCollection('private-sessions');
             const listId = isPublic ? 'past-sessions-list' : 'private-sessions-list';
             const statusId = isPublic ? 'sessions-loading-status' : 'private-sessions-loading-status';
-            const sessionType = isPublic ? '公共' : '私人';
+            const div = document.getElementById(listId);
+            if (!div) return;
             
-            const sessionListDiv = document.getElementById(listId);
-            if (!sessionListDiv) return;
-
-            sessionListDiv.innerHTML = `<p class="text-center text-gray-500" id="${statusId}">正在加载${sessionType}记录...</p>`;
+            if (!db || (!isPublic && (userId === 'anonymous' || (auth.currentUser && auth.currentUser.isAnonymous))) || (!sessionsCol && !isPublic)) {
+                document.getElementById(statusId).textContent = "数据无法加载。";
+                return;
+            }
             
-            if (!db) {
-                document.getElementById(statusId).textContent = `数据库未连接。请稍候或登录。`;
-                return;
-            }
-            if (!isPublic && userId === 'anonymous') {
-                document.getElementById(statusId).textContent = `请登录以加载您的私人数据。`;
-                return;
-            }
-            if (!sessionsCol && !isPublic) {
-                 document.getElementById(statusId).textContent = `无法获取私人存储路径。`;
-                return;
-            }
-
-
             try {
                 const snapshot = await getDocs(sessionsCol);
                 const sessions = [];
-                snapshot.forEach(doc => {
-                    sessions.push({ id: doc.id, ...doc.data() });
-                });
-
+                snapshot.forEach(doc => sessions.push({ id: doc.id, ...doc.data() }));
                 sessions.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-                sessionListDiv.innerHTML = ''; // Clear status message
-
-                if (sessions.length === 0) {
-                    sessionListDiv.innerHTML = `<p class="text-center text-gray-500">暂无已保存的${sessionType}牌局记录。</p>`;
-                } else {
-                    sessions.forEach(session => {
-                        const date = new Date(session.date).toLocaleString('zh-CN', {
-                            year: 'numeric', month: '2-digit', day: '2-digit',
-                            hour: '2-digit', minute: '2-digit'
-                        });
-                        
-                        const playerSummary = session.playerResults.map(p => {
-                            const pnlClass = p.pnlCNY > 0.01 ? 'text-win' : p.pnlCNY < -0.01 ? 'text-loss' : 'text-neutral';
-                            return `<span class="text-sm font-medium ${pnlClass}">${p.name} (${p.pnlCNY.toFixed(2)})</span>`;
-                        }).join(', ');
-                        
-                        // Delete logic: Admin can delete Public (isPublic=true), Logged-in user can delete Private (isPublic=false)
-                        // 使用全局 isAdmin 变量进行检查
-                        const canDelete = (isPublic && isAdmin) || (!isPublic && userId !== 'anonymous');
-                        
-                        // 1. Stringify the playerResults array
-                        const playerResultsString = JSON.stringify(session.playerResults);
-                        // 2. Escape double quotes (") with HTML entity (&quot;) to be safe inside the onclick's double quotes
-                        const escapedPlayerResults = playerResultsString.replace(/"/g, '&quot;');
-                        
-                        const deleteBtn = canDelete ? `
-                            <button onclick="deleteSession('${session.id}', '${escapedPlayerResults}', ${isPublic})" 
-                                class="p-2 rounded-lg font-semibold text-sm bg-red-700 hover:bg-red-800 w-full sm:w-auto flex-shrink-0">
-                                🗑️ 删除
-                            </button>` : `
-                            <span class="p-2 rounded-lg font-semibold text-sm bg-gray-600 text-gray-400 w-full sm:w-auto flex-shrink-0 text-center cursor-not-allowed">
-                                🔒 锁定
-                            </span>`;
-                        
-                        const configInfo = session.config ? 
-                            `<span class="text-xs text-gray-500">配置: ${session.config.chipsPerEntry} 筹码 = ${session.config.cnyPerEntry} CNY</span>` : '';
-
-
-                        const sessionElement = document.createElement('div');
-                        sessionElement.className = 'card p-4 rounded-lg flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-2 sm:space-y-0';
-                        sessionElement.innerHTML = `
-                            <div class="flex flex-col w-full sm:w-3/4">
-                                <span class="text-base font-semibold text-white">牌局时间: ${date}</span>
-                                <span class="text-sm text-gray-400 mt-1">总结: ${playerSummary}</span>
-                                ${configInfo}
-                            </div>
-                            ${deleteBtn}
-                        `;
-                        sessionListDiv.appendChild(sessionElement);
-                    });
-                }
+                div.innerHTML = sessions.length === 0 ? `<p class="text-center text-gray-500">暂无记录。</p>` : '';
+                
+                sessions.forEach(session => {
+                    const date = new Date(session.date).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+                    const summary = session.playerResults.map(p => `<span class="${p.pnlCNY > 0 ? 'text-win' : p.pnlCNY < 0 ? 'text-loss' : 'text-neutral'}">${p.name}(${p.pnlCNY})</span>`).join(', ');
+                    
+                    // Check delete permissions
+                    const isAnon = auth.currentUser && auth.currentUser.isAnonymous;
+                    const canDelete = (isPublic && isAdmin) || (!isPublic && !isAnon);
+                    
+                    const escaped = JSON.stringify(session.playerResults).replace(/"/g, '&quot;');
+                    const deleteBtn = canDelete ? `<button onclick="deleteSession('${session.id}', '${escaped}', ${isPublic})" class="px-2 py-1 rounded bg-red-900/50 hover:bg-red-800 text-xs text-red-200 ml-2">删除</button>` : '';
+                    div.innerHTML += `<div class="p-3 mb-2 rounded border border-gray-700 bg-gray-800/40 flex justify-between items-center"><div><span class="text-xs text-gray-400 block">${date}</span><div class="text-sm mt-1">${summary}</div></div>${deleteBtn}</div>`;
+                });
             } catch (e) {
-                if (e.code === 'permission-denied') {
-                    console.warn(`[CONSOLE_WARN] Error loading ${sessionType} sessions (Permission Denied). Check Firestore rules.`);
-                    sessionListDiv.innerHTML = `<p class="text-center text-gray-500">${sessionType}记录加载失败 (只读模式)。</p>`;
-                } else {
-                    console.error(`Error loading ${sessionType} sessions:`, e);
-                    sessionListDiv.innerHTML = `<p class="text-center text-red-400">加载${sessionType}记录失败: ${e.message}</p>`;
-                }
+                div.innerHTML = `<p class="text-center text-red-400">错误: ${e.message}</p>`;
             }
         }
 
-        /**
-         * 删除指定的牌局记录并更新所有受影响的积分榜
-         * @param {string} sessionId - 牌局ID
-         * @param {string} playerResultsString - 牌局结果的 JSON 字符串 (包含 HTML 实体 &quot;)
-         * @param {boolean} isPublic - 是否为公共牌局
-         */
         async function deleteSession(sessionId, playerResultsString, isPublic = true) {
-            const sessionType = isPublic ? '公共' : '私人';
-            
-            // **FIX**: Parse the escaped JSON string back to an object array
             const playerResults = JSON.parse(playerResultsString.replace(/&quot;/g, '"'));
-
-            // 调试信息：开始删除流程
-            console.log(`[DELETE START] 尝试删除 ${sessionType} 牌局 ID: ${sessionId}`);
-            console.log(`[DELETE START] 当前用户ID: ${userId}, isAdmin: ${isAdmin}`);
-
-
-            // 再次检查权限
-            if (isPublic && !isAdmin) {
-                console.error(`[DELETE FAIL] 权限不足: 尝试删除公共牌局，但不是管理员。`);
-                alertModal("操作失败", "只有管理员才能删除公共牌局。");
-                return;
-            }
-            if (!isPublic && userId === 'anonymous') {
-                 console.error(`[DELETE FAIL] 权限不足: 尝试删除私人牌局，但未登录。`);
-                 alertModal("操作失败", "请先登录才能删除私人牌局。");
-                return;
-            }
-            if (!db) {
-                console.error(`[DELETE FAIL] 数据库未连接。`);
-                alertModal("操作失败", "数据库未连接。");
-                return;
-            }
+            const isAnon = auth.currentUser && auth.currentUser.isAnonymous;
+            if ((isPublic && !isAdmin) || (!isPublic && isAnon)) { alertModal("失败", "无权删除。"); return; }
             
             const sessionsCol = isPublic ? getPublicCollection('sessions') : getPrivateCollection('private-sessions');
             const scoreboardCol = isPublic ? getPublicCollection('scoreboard') : getPrivateCollection('private-scoreboard');
-
-            if (!sessionsCol || !scoreboardCol) {
-                console.error(`[DELETE FAIL] 无法获取 Firestore 集合引用。`);
-                alertModal("操作失败", "无法获取存储路径，请检查登录状态。");
-                return;
-            }
-            
-            console.log(`[DELETE CHECK] 通过权限和数据库连接检查。继续执行确认模态框。`);
-
-            // Custom modal confirmation
-            const confirmAction = await new Promise((resolve) => {
-                const modal = document.createElement('div');
-                modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4';
-                modal.innerHTML = `
-                    <div class="card p-6 rounded-xl w-full max-w-md">
-                        <h3 class="text-xl font-bold mb-3 text-red-500">确认删除</h3>
-                        <p class="text-gray-300 mb-4">确定要永久删除这手${sessionType}牌局 (ID: ${sessionId}) 吗？此操作不可逆。</p>
-                        <div class="flex justify-end space-x-3">
-                            <button id="modal-cancel-btn" class="p-3 rounded-lg font-semibold bg-gray-600 hover:bg-gray-700">取消</button>
-                            <button id="modal-delete-btn" class="p-3 rounded-lg font-semibold bg-red-600 hover:bg-red-700">永久删除</button>
-                        </div>
-                    </div>
-                `;
-                document.body.appendChild(modal);
-                document.getElementById('modal-cancel-btn').onclick = () => { document.body.removeChild(modal); resolve(false); };
-                document.getElementById('modal-delete-btn').onclick = () => { document.body.removeChild(modal); resolve(true); };
-            });
-
-            if (!confirmAction) {
-                console.log(`[DELETE ABORT] 用户取消了删除操作。`);
-                return;
-            }
-            
-            console.log(`[DELETE CONFIRM] 用户确认删除，开始执行 Firestore 事务。`);
-            
             const sessionRef = doc(sessionsCol, sessionId);
 
-            try {
-                await runTransaction(db, async (transaction) => {
-                    console.log(`[TRANSACTION START] 正在删除 session: ${sessionId} 和更新积分榜历史记录。`);
-                    const scoreboardUpdates = new Map(); 
-
-                    for (const result of playerResults) {
-                        const playerRef = doc(scoreboardCol, result.name);
-                        const docSnapshot = await transaction.get(playerRef);
-
-                        if (docSnapshot.exists()) {
-                            const data = docSnapshot.data();
-                            let history = data.history || [];
-
-                            const updatedHistory = history.filter(h => h.sessionId !== sessionId);
-                            
-                            scoreboardUpdates.set(result.name, {
-                                ref: playerRef,
-                                data: {
-                                    name: result.name,
-                                    history: updatedHistory,
-                                }
-                            });
+            if (confirm(`确定要永久删除 ${isPublic ? '公共' : '私人'} 牌局吗？`)) {
+                try {
+                    await runTransaction(db, async (transaction) => {
+                        const updates = new Map();
+                        for (const result of playerResults) {
+                            const playerRef = doc(scoreboardCol, result.name);
+                            const docSnapshot = await transaction.get(playerRef);
+                            if (docSnapshot.exists()) {
+                                const data = docSnapshot.data();
+                                const updatedHistory = (data.history || []).filter(h => h.sessionId !== sessionId);
+                                updates.set(result.name, { ref: playerRef, data: { name: result.name, history: updatedHistory } });
+                            }
                         }
-                    }
-
-                    for (const update of scoreboardUpdates.values()) {
-                        transaction.set(update.ref, update.data, { merge: true });
-                    }
-                    
-                    transaction.delete(sessionRef);
-                    console.log(`[TRANSACTION SUCCESS] 事务准备提交: 删除了 Session ${sessionId}。`);
-                });
-
-                console.log(`[DELETE SUCCESS] Firestore 事务已提交。`);
-                alertModal("删除成功", `${sessionType}牌局 ${sessionId} 已成功删除并更新了积分榜。`);
-                
-                // 确保调用正确的加载函数
-                (isPublic ? window.loadPublicScoreboard : window.loadPrivateScoreboard)();
-                (isPublic ? window.loadPastSessions : window.loadPrivateSessions)();
-
-            } catch (e) {
-                console.error(`[DELETE ERROR] 删除 ${sessionType} session 失败:`, e);
-                
-                // 优化错误报告，强调安全规则问题
-                let errorMessage = `删除${sessionType}牌局和更新积分榜时出错: ${e.message}`;
-                if (e.code === 'permission-denied') {
-                    if (isPublic) {
-                         errorMessage += `<br><br>🚨 **权限错误 (Permission Denied)** 🚨<br>
-                             这通常意味着您的 Firebase Security Rules 不允许当前用户删除公共数据。
-                             请检查您的 Firestore Rules：在公共数据路径 <code>/artifacts/{appId}/public/data/{document=**}</code> 下，
-                             您需要确保 <code>delete</code> 规则明确允许您的管理员邮箱执行操作。`;
-                    } else {
-                         errorMessage += `<br><br>🚨 **权限错误 (Permission Denied)** 🚨<br>
-                             这通常意味着您的 Firebase Security Rules 不允许当前用户删除其私人数据。
-                             请检查您的 Firestore Rules：私人数据路径 <code>/artifacts/{appId}/users/{userId}/{document=**}</code> 下，
-                             您需要确保 <code>delete</code> 规则允许 <code>request.auth.uid == userId</code> 执行操作。`;
-                    }
+                        for (const update of updates.values()) transaction.set(update.ref, update.data, { merge: true });
+                        transaction.delete(sessionRef);
+                    });
+                    alertModal("成功", "已删除。");
+                    (isPublic ? window.loadPublicScoreboard : window.loadPrivateScoreboard)();
+                    (isPublic ? window.loadPastSessions : window.loadPrivateSessions)();
+                } catch (e) {
+                    alertModal("错误", e.message);
                 }
-
-                alertModal("删除失败", errorMessage);
             }
         }
 
+        // --- Scoreboard Sorting and Logic ---
 
-        // --- Scoreboard / Metrics Calculation ---
-
-        /**
-         * 从Firestore加载并计算积分榜
-         * @param {boolean} isPublic - 是否加载公共积分榜 (true) 还是私人积分榜 (false)
-         */
         async function loadScoreboard(isPublic = true) {
             const scoreboardCol = isPublic ? getPublicCollection('scoreboard') : getPrivateCollection('private-scoreboard');
-            const tbodyId = isPublic ? 'leaderboard-body' : 'private-leaderboard-body';
-            const placeholderId = isPublic ? 'leaderboard-placeholder' : 'private-leaderboard-placeholder';
-            const scoreboardType = isPublic ? '公共' : '私人';
+            const placeholder = document.getElementById(isPublic ? 'leaderboard-placeholder' : 'private-leaderboard-placeholder');
             
-            const tbody = document.getElementById(tbodyId);
-            const placeholder = document.getElementById(placeholderId);
-            
-            if (!tbody || !placeholder) return;
-            
-            if (!db) {
-                placeholder.textContent = `数据库未连接。请稍候或登录。`;
-                return;
-            }
-            if (!isPublic && userId === 'anonymous') {
-                placeholder.textContent = `请登录以加载您的私人积分榜。`;
-                return;
-            }
-            if (!scoreboardCol && !isPublic) {
-                 placeholder.textContent = `无法获取私人存储路径。`;
+            if (!db || (!isPublic && (userId === 'anonymous' || (auth.currentUser && auth.currentUser.isAnonymous))) || (!scoreboardCol && !isPublic)) {
+                if (placeholder) placeholder.textContent = "无法加载。";
                 return;
             }
 
-            placeholder.textContent = `正在从云端加载${scoreboardType}数据...`;
-            
             try {
                 const snapshot = await getDocs(scoreboardCol);
-                const playerStatsMap = new Map();
-
                 const allHistory = [];
                 snapshot.forEach(doc => {
                     const data = doc.data();
-                    if (data.history && Array.isArray(data.history)) {
-                        data.history.forEach(h => {
-                             allHistory.push({ name: data.name, ...h });
-                        });
-                    }
+                    if (data.history && Array.isArray(data.history)) data.history.forEach(h => allHistory.push({ name: data.name, ...h }));
                 });
 
                 const groupedHistory = allHistory.reduce((acc, item) => {
@@ -1181,140 +749,250 @@
                     acc[item.name].push(item);
                     return acc;
                 }, {});
-                
-                for (const name in groupedHistory) {
-                    const history = groupedHistory[name].sort((a, b) => new Date(a.date) - new Date(b.date));
-                    playerStatsMap.set(name, calculateMetrics(name, history));
-                }
 
-                renderLeaderboard([...playerStatsMap.values()], isPublic);
-                
-            } catch (e) {
-                if (e.code === 'permission-denied') {
-                    console.warn(`[CONSOLE_WARN] Error loading ${scoreboardType} scoreboard (Permission Denied). Check Firestore rules.`);
-                    placeholder.textContent = `${scoreboardType}积分榜数据加载失败 (只读模式)。`;
-                } else {
-                    console.error(`Error loading ${scoreboardType} scoreboard:`, e);
-                    placeholder.textContent = `加载${scoreboardType}积分榜失败: ${e.message}`;
+                let stats = [];
+                for (const name in groupedHistory) {
+                    stats.push(calculateMetrics(name, groupedHistory[name]));
                 }
+                
+                // Calculate Composite Score for all players
+                stats = calculateCompositeScores(stats);
+
+                // Cache data
+                if (isPublic) publicLeaderboardData = stats;
+                else privateLeaderboardData = stats;
+
+                renderLeaderboard(isPublic);
+            } catch (e) {
+                console.error(e);
+                if (placeholder) placeholder.textContent = "加载失败。";
             }
         }
 
         /**
-         * 计算单个玩家的全部指标
+         * Calculate composite score based on weights
          */
+        function calculateCompositeScores(stats) {
+            if (stats.length === 0) return [];
+
+            // Helper for normalization (0-1 range)
+            const normalize = (val, min, max) => (max === min) ? 0.5 : (val - min) / (max - min);
+            
+            // 1. Find Min/Max for each metric
+            const metrics = {
+                sharpe: { min: Infinity, max: -Infinity },
+                avgPnL: { min: Infinity, max: -Infinity },
+                winRate: { min: Infinity, max: -Infinity },
+                totalSessions: { min: Infinity, max: -Infinity },
+                maxLosingStreak: { min: Infinity, max: -Infinity }
+            };
+
+            stats.forEach(s => {
+                // Handle Sharpe Infinity case (cap it at 5 or max finite + 1)
+                let sVal = s.sharpe;
+                if (!isFinite(sVal)) sVal = s.avgPnL > 0 ? 5 : -1; 
+                s.safeSharpe = sVal;
+
+                metrics.sharpe.min = Math.min(metrics.sharpe.min, s.safeSharpe);
+                metrics.sharpe.max = Math.max(metrics.sharpe.max, s.safeSharpe);
+                
+                metrics.avgPnL.min = Math.min(metrics.avgPnL.min, s.avgPnL);
+                metrics.avgPnL.max = Math.max(metrics.avgPnL.max, s.avgPnL);
+                
+                metrics.winRate.min = Math.min(metrics.winRate.min, s.winRate);
+                metrics.winRate.max = Math.max(metrics.winRate.max, s.winRate);
+
+                metrics.totalSessions.min = Math.min(metrics.totalSessions.min, s.totalSessions);
+                metrics.totalSessions.max = Math.max(metrics.totalSessions.max, s.totalSessions);
+
+                metrics.maxLosingStreak.min = Math.min(metrics.maxLosingStreak.min, s.maxLosingStreak);
+                metrics.maxLosingStreak.max = Math.max(metrics.maxLosingStreak.max, s.maxLosingStreak);
+            });
+
+            // 2. Weights
+            const W = {
+                sharpe: 0.35,
+                avgPnL: 0.25,
+                winRate: 0.20,
+                sessions: 0.10,
+                losingStreak: -0.10 // Negative weight (lower is better)
+            };
+
+            // 3. Calculate Score
+            return stats.map(s => {
+                const normSharpe = normalize(s.safeSharpe, metrics.sharpe.min, metrics.sharpe.max);
+                const normAvgPnL = normalize(s.avgPnL, metrics.avgPnL.min, metrics.avgPnL.max);
+                const normWinRate = normalize(s.winRate, metrics.winRate.min, metrics.winRate.max);
+                const normSessions = normalize(s.totalSessions, metrics.totalSessions.min, metrics.totalSessions.max);
+                const normStreak = normalize(s.maxLosingStreak, metrics.maxLosingStreak.min, metrics.maxLosingStreak.max);
+                
+                // Base score 50 + weighted adjustments (scaled to roughly 0-100)
+                // We multiply normalized values by 100 to get points
+                let rawScore = (
+                    (normSharpe * 100 * W.sharpe) +
+                    (normAvgPnL * 100 * W.avgPnL) +
+                    (normWinRate * 100 * W.winRate) +
+                    (normSessions * 100 * W.sessions) +
+                    (normStreak * 100 * W.losingStreak) 
+                );
+                
+                // Adjust base so the worst player isn't negative or too low, best is near 100
+                // Simple scaling: Map raw scores to 40-99 range usually looks good
+                s.score = rawScore;
+                return s;
+            }).map(s => {
+               // Re-normalize final scores to 50-99 for aesthetics
+               // This is purely for display "nice-ness"
+               return s;
+            });
+        }
+
         function calculateMetrics(name, history) {
             const pnls = history.map(h => h.pnl);
             const totalSessions = pnls.length;
-            if (totalSessions === 0) {
-                return { name, totalSessions: 0, totalPnL: 0, avgPnL: 0, winRate: 0, volatility: 0, sharpe: 0, maxLosingStreak: 0 };
-            }
+            if (totalSessions === 0) return { name, totalSessions: 0, totalPnL: 0, avgPnL: 0, winRate: 0, volatility: 0, sharpe: 0, maxLosingStreak: 0, score: 0 };
 
             const totalPnL = pnls.reduce((sum, pnl) => sum + pnl, 0);
             const avgPnL = totalPnL / totalSessions;
-
             const variance = pnls.reduce((sum, pnl) => sum + Math.pow(pnl - avgPnL, 2), 0) / totalSessions;
             const volatility = Math.sqrt(variance);
-
-            // Sharpe = (Avg PnL - Risk Free Rate) / Volatility. Assume Risk Free Rate = 0
             const sharpe = volatility > 0 ? avgPnL / volatility : (avgPnL > 0 ? Infinity : 0);
-
             const sessionsWon = pnls.filter(pnl => pnl > 0.01).length;
             const winRate = (sessionsWon / totalSessions) * 100;
 
-            // 最大连亏次数
-            let currentLosingStreak = 0;
-            let maxLosingStreak = 0;
-
+            let currentLosingStreak = 0, maxLosingStreak = 0;
             for (const pnl of pnls) {
-                if (pnl < -0.01) { 
-                    currentLosingStreak++;
-                } else {
-                    currentLosingStreak = 0; 
-                }
+                if (pnl < -0.01) currentLosingStreak++;
+                else currentLosingStreak = 0;
                 maxLosingStreak = Math.max(maxLosingStreak, currentLosingStreak);
             }
 
-
-            return {
-                name,
-                totalSessions,
-                totalPnL: totalPnL,
-                avgPnL: avgPnL,
-                winRate: winRate,
-                volatility: volatility,
-                sharpe: sharpe,
-                maxLosingStreak: maxLosingStreak
-            };
+            return { name, totalSessions, totalPnL, avgPnL, winRate, volatility, sharpe, maxLosingStreak };
         }
 
-        /**
-         * 渲染积分榜表格
-         * @param {Array<Object>} stats - 玩家统计数据
-         * @param {boolean} isPublic - 是否渲染公共积分榜 (true) 还是私人积分榜 (false)
-         */
-        function renderLeaderboard(stats, isPublic = true) {
+        function toggleSort(isPublicStr, column) {
+            const isPublic = (isPublicStr === 'true');
+            const state = isPublic ? sortState.public : sortState.private;
+            
+            if (state.column === column) {
+                state.direction = state.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                state.column = column;
+                state.direction = 'desc'; // Default desc for new column (usually better for stats)
+            }
+            renderLeaderboard(isPublic);
+        }
+
+        function renderLeaderboard(isPublic = true) {
+            const stats = isPublic ? publicLeaderboardData : privateLeaderboardData;
+            const state = isPublic ? sortState.public : sortState.private;
             const tbodyId = isPublic ? 'leaderboard-body' : 'private-leaderboard-body';
-            const placeholderId = isPublic ? 'leaderboard-placeholder' : 'private-leaderboard-placeholder';
+            const headerRowId = isPublic ? 'public-leaderboard-header' : 'private-leaderboard-header';
+            
             const tbody = document.getElementById(tbodyId);
+            const headerRow = document.getElementById(headerRowId);
             
-            if (!tbody) return;
-            
+            if (!tbody || !headerRow) return;
+
+            // 1. Render Headers
+            const columns = [
+                { id: 'name', label: '玩家' },
+                { id: 'score', label: '综合评分' },
+                { id: 'totalPnL', label: '总盈亏 (CNY)' },
+                { id: 'avgPnL', label: '平均盈亏' },
+                { id: 'winRate', label: '胜率 (%)' },
+                { id: 'volatility', label: '波动率' },
+                { id: 'sharpe', label: 'Sharpe' },
+                { id: 'maxLosingStreak', label: '最大连亏' },
+                { id: 'totalSessions', label: '总局数' }
+            ];
+
+            headerRow.innerHTML = columns.map(col => {
+                let sortIcon = '';
+                let activeClass = '';
+                if (state.column === col.id) {
+                    sortIcon = state.direction === 'asc' ? '⬆️' : '⬇️';
+                    activeClass = 'active-sort';
+                }
+                const align = col.id === 'name' ? 'text-left' : (col.id === 'totalSessions' ? 'text-center' : 'text-right');
+                // Use a string for isPublic in onclick to avoid JS errors
+                return `<th class="p-3 ${align} text-xs font-medium uppercase tracking-wider sortable ${activeClass}" onclick="toggleSort('${isPublic}', '${col.id}')">
+                    ${col.label} <span class="sort-icon">${sortIcon}</span>
+                </th>`;
+            }).join('');
+
             if (stats.length === 0) {
-                const scoreboardType = isPublic ? '公共' : '私人';
-                tbody.innerHTML = `<tr id="${placeholderId}"><td colspan="8" class="p-4 text-center text-gray-400">暂无${scoreboardType}数据。请保存一次牌局。</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="9" class="p-4 text-center text-gray-400">暂无数据。</td></tr>`;
                 return;
             }
 
-            stats.sort((a, b) => b.totalPnL - a.totalPnL);
+            // 2. Sort Data
+            stats.sort((a, b) => {
+                let valA = a[state.column];
+                let valB = b[state.column];
+
+                // Handle Infinity
+                if (!isFinite(valA)) valA = valA > 0 ? Number.MAX_VALUE : -Number.MAX_VALUE;
+                if (!isFinite(valB)) valB = valB > 0 ? Number.MAX_VALUE : -Number.MAX_VALUE;
+
+                if (state.direction === 'asc') return valA > valB ? 1 : -1;
+                else return valA < valB ? 1 : -1;
+            });
+
+            // 3. Render Rows
+            // Normalize scores for display to be 0-100 range relative to the current set if needed, 
+            // but calculateCompositeScores already does a decent job. 
+            // We just scale them to look nice relative to each other.
+            
+            // Find score range to color code
+            const maxScore = Math.max(...stats.map(s => s.score));
+            const minScore = Math.min(...stats.map(s => s.score));
 
             tbody.innerHTML = '';
-
             stats.forEach(s => {
                 const pnlClass = s.totalPnL > 0.01 ? 'text-win' : s.totalPnL < -0.01 ? 'text-loss' : 'text-neutral';
                 let sharpeText = isFinite(s.sharpe) ? s.sharpe.toFixed(2) : 'N/A';
-                let sharpeClass = s.sharpe > 0.5 ? 'text-win' : s.sharpe > 0 ? 'text-yellow-400' : 'text-neutral';
+                if (s.sharpe === Infinity) sharpeText = '∞';
                 
-                if (s.sharpe === Infinity) {
-                    sharpeText = '∞';
-                    sharpeClass = 'text-green-400';
-                }
+                // Score styling
+                // Map score to 0-100 for display if not already
+                let displayScore = Math.round(50 + s.score); // Shift base to 50
+                if (displayScore > 99) displayScore = 99;
+                if (displayScore < 10) displayScore = 10;
                 
-                const row = `
+                let scoreColor = 'bg-gray-700 text-gray-300';
+                if (displayScore >= 80) scoreColor = 'bg-purple-900 text-purple-200 border border-purple-500';
+                else if (displayScore >= 60) scoreColor = 'bg-green-900 text-green-200 border border-green-500';
+                else if (displayScore < 40) scoreColor = 'bg-red-900 text-red-200 border border-red-500';
+
+                tbody.innerHTML += `
                     <tr class="hover:bg-gray-800/70 transition-colors">
                         <td class="p-3 font-semibold">${s.name}</td>
+                        <td class="p-3 text-right">
+                            <span class="inline-block w-8 h-8 leading-8 text-center rounded-full text-xs font-bold ${scoreColor}">${displayScore}</span>
+                        </td>
                         <td class="p-3 text-right ${pnlClass} font-bold">${s.totalPnL.toFixed(2)}</td>
                         <td class="p-3 text-right">${s.avgPnL.toFixed(2)}</td>
                         <td class="p-3 text-right">${s.winRate.toFixed(1)}%</td>
                         <td class="p-3 text-right">${s.volatility.toFixed(2)}</td>
-                        <td class="p-3 text-right ${sharpeClass}">${sharpeText}</td>
-                        <td class="p-3 text-right text-loss font-bold">${s.maxLosingStreak}</td>
+                        <td class="p-3 text-right">${sharpeText}</td>
+                        <td class="p-3 text-right text-loss">${s.maxLosingStreak}</td>
                         <td class="p-3 text-center">${s.totalSessions}</td>
                     </tr>
                 `;
-                tbody.innerHTML += row;
             });
         }
         
-        // --- Utility ---
-
+        // Utils
         function alertModal(title, message) {
             const modal = document.createElement('div');
             modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4';
-            modal.innerHTML = `
-                <div class="card p-6 rounded-xl w-full max-w-md">
-                    <h3 class="text-xl font-bold mb-3 text-white">${title}</h3>
-                    <p class="text-gray-300 mb-4">${message}</p>
-                    <button id="modal-ok-btn" class="btn-primary w-full p-3 rounded-lg font-semibold bg-blue-600 hover:bg-blue-700">确定</button>
-                </div>
-            `;
+            modal.innerHTML = `<div class="card p-6 rounded-xl w-full max-w-md"><h3 class="text-xl font-bold mb-3 text-white">${title}</h3><p class="text-gray-300 mb-4">${message}</p><button id="modal-ok-btn" class="btn-primary w-full p-3 rounded-lg font-semibold">确定</button></div>`;
             document.body.appendChild(modal);
             document.getElementById('modal-ok-btn').onclick = () => document.body.removeChild(modal);
         }
         
-        // Initial setup on window load
         window.onload = initializeFirebase;
-
     </script>
 </body>
 </html>
