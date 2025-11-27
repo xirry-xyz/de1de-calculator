@@ -146,7 +146,7 @@
             
             <!-- Transfer Solution -->
             <div id="transfer-solution" class="mt-6 p-4 rounded-lg bg-green-900/30 border border-green-600 hidden">
-                <h3 class="text-lg font-semibold mb-2 text-green-400">💸 最佳转账方案 (最小化次数)</h3>
+                <h3 class="text-lg font-semibold mb-2" style="color: #48bb78;">💸 最佳转账方案 (最小化次数)</h3>
                 <ul id="transfer-list" class="space-y-1"></ul>
             </div>
         </div>
@@ -236,6 +236,7 @@
 
         // --- Authorization Configuration ---
         // ⚠️ 关键步骤 1: 请将此邮箱替换为您自己的 Google 账户邮箱，该账户将拥有编辑公共数据的权限
+        // 🚨🚨🚨 如果此处仍为占位符，管理员权限将不会启用，您将无法删除公共数据！🚨🚨🚨
         const ADMIN_EMAIL = 'xirry.xyz@gmail.com'; 
         let isAdmin = false; 
 
@@ -424,10 +425,11 @@
                     const userIdDisplay = document.getElementById('user-id-display');
                     
                     const isLoggedIn = !!user;
+                    let currentIsAdmin = false;
 
                     if (isLoggedIn) {
                         userId = user.uid;
-                        isAdmin = (user.email === ADMIN_EMAIL);
+                        currentIsAdmin = (user.email === ADMIN_EMAIL);
                         
                         authStatus.textContent = `当前用户: ${user.email || user.uid}`;
                         userIdDisplay.textContent = userId;
@@ -437,14 +439,23 @@
                         authButton.classList.remove('bg-blue-600', 'hover:bg-blue-700');
                         authButton.classList.add('bg-gray-600', 'hover:bg-gray-700');
                         
-                        if (isAdmin) {
-                            adminStatus.textContent = '👑 您是管理员，拥有公共数据编辑和删除权限。';
-                            adminStatus.classList.remove('text-yellow-400', 'text-red-400');
-                            adminStatus.classList.add('text-green-400');
+                        // 检查 ADMIN_EMAIL 是否已配置，并设置 isAdmin 状态
+                        if (ADMIN_EMAIL === 'YOUR_ADMIN_EMAIL@gmail.com') {
+                            isAdmin = false;
+                            adminStatus.textContent = '⚠️ 警告: ADMIN_EMAIL 尚未配置。管理员权限已禁用。';
+                            adminStatus.classList.remove('text-green-400', 'text-yellow-400');
+                            adminStatus.classList.add('text-red-400');
                         } else {
-                            adminStatus.textContent = '🔒 您是普通用户，只能编辑和查看您的私人牌局。';
-                            adminStatus.classList.add('text-yellow-400');
-                            adminStatus.classList.remove('text-green-400', 'text-red-400');
+                            isAdmin = currentIsAdmin;
+                            if (isAdmin) {
+                                adminStatus.textContent = '👑 您是管理员，拥有公共数据编辑和删除权限。';
+                                adminStatus.classList.remove('text-yellow-400', 'text-red-400');
+                                adminStatus.classList.add('text-green-400');
+                            } else {
+                                adminStatus.textContent = '🔒 您是普通用户，只能编辑和查看您的私人牌局。';
+                                adminStatus.classList.add('text-yellow-400');
+                                adminStatus.classList.remove('text-green-400', 'text-red-400');
+                            }
                         }
 
                         // 加载数据并切换UI
@@ -459,7 +470,12 @@
                         isAdmin = false;
                         
                         authStatus.textContent = '未登录。请使用 Google 账户登录。';
-                        adminStatus.textContent = '🔒 编辑功能已锁定。';
+                        
+                        if (ADMIN_EMAIL === 'YOUR_ADMIN_EMAIL@gmail.com') {
+                            adminStatus.textContent = '⚠️ 警告: ADMIN_EMAIL 尚未配置。';
+                        } else {
+                            adminStatus.textContent = '🔒 编辑功能已锁定。';
+                        }
                         adminStatus.classList.add('text-red-400');
                         adminStatus.classList.remove('text-green-400', 'text-yellow-400');
                         userIdDisplay.textContent = 'N/A';
@@ -906,6 +922,7 @@
                         }).join(', ');
                         
                         // Delete logic: Admin can delete Public (isPublic=true), Logged-in user can delete Private (isPublic=false)
+                        // 使用全局 isAdmin 变量进行检查
                         const canDelete = (isPublic && isAdmin) || (!isPublic && userId !== 'anonymous');
                         
                         const deleteBtn = canDelete ? `
@@ -954,6 +971,7 @@
         async function deleteSession(sessionId, playerResults, isPublic = true) {
             const sessionType = isPublic ? '公共' : '私人';
             
+            // 再次检查权限
             if (isPublic && !isAdmin) {
                 alertModal("操作失败", "只有管理员才能删除公共牌局。");
                 return;
@@ -1221,7 +1239,7 @@
                 <div class="card p-6 rounded-xl w-full max-w-md">
                     <h3 class="text-xl font-bold mb-3 text-white">${title}</h3>
                     <p class="text-gray-300 mb-4">${message}</p>
-                    <button id="modal-ok-btn" class="btn-primary w-full p-3 rounded-lg font-semibold">确定</button>
+                    <button id="modal-ok-btn" class="btn-primary w-full p-3 rounded-lg font-semibold bg-blue-600 hover:bg-blue-700">确定</button>
                 </div>
             `;
             document.body.appendChild(modal);
