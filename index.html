@@ -401,7 +401,7 @@
          */
         async function initializeFirebase() {
             // 检查 API 密钥是否已替换
-            if (firebaseConfig.apiKey === 'AIzaSyD4mEhWsVxOi5F1PIMCk1ykAs6TOj8prUQ') {
+            if (firebaseConfig.apiKey === 'REPLACE_WITH_YOUR_API_KEY') {
                 document.getElementById('auth-status').textContent = '错误: 请在代码中替换 API 密钥后再部署。';
                 document.getElementById('auth-button').disabled = true;
                 return;
@@ -441,7 +441,7 @@
                         authButton.classList.add('bg-gray-600', 'hover:bg-gray-700');
                         
                         // 检查 ADMIN_EMAIL 是否已配置，并设置 isAdmin 状态
-                        if (ADMIN_EMAIL === 'xirry.xyz@gmail.com') {
+                        if (ADMIN_EMAIL === 'YOUR_ADMIN_EMAIL@gmail.com') {
                             isAdmin = false;
                             adminStatus.textContent = '⚠️ 警告: ADMIN_EMAIL 尚未配置。管理员权限已禁用。';
                             adminStatus.classList.remove('text-green-400', 'text-yellow-400');
@@ -472,7 +472,7 @@
                         
                         authStatus.textContent = '未登录。请使用 Google 账户登录。';
                         
-                        if (ADMIN_EMAIL === 'xirry.xyz@gmail.com') {
+                        if (ADMIN_EMAIL === 'YOUR_ADMIN_EMAIL@gmail.com') {
                             adminStatus.textContent = '⚠️ 警告: ADMIN_EMAIL 尚未配置。';
                         } else {
                             adminStatus.textContent = '🔒 编辑功能已锁定。';
