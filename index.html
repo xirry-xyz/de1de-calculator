@@ -434,23 +434,19 @@
         function removePlayer(id) { if (!auth.currentUser || auth.currentUser.isAnonymous) return; sessionPlayers = sessionPlayers.filter(p => p.id !== id); updateSessionSummary(); }
         
         function adjustDiscrepancy(players) {
-            // FIX: Ensure we start from original PnL to avoid cumulative floating point errors
+            // FIX: Start fresh from p.pnlCNY every time to prevent cumulative drift
             let totalPnL = players.reduce((s, p) => s + p.pnlCNY, 0); 
-            // Create fresh copy resetting adjustedPnLCNY to original pnlCNY
-            const res = players.map(p => ({...p, adjustedPnLCNY: p.pnlCNY})); 
+            const res = players.map(p => ({...p, adjustedPnLCNY: p.pnlCNY})); // Reset adjustment
             
             if (Math.abs(totalPnL) < 0.01) return res;
             
             const mag = Math.abs(totalPnL);
             if (totalPnL > 0) { 
-                // Surplus: Subtract from winners
-                const ws = res.filter(p => p.pnlCNY > 0); 
-                const tot = ws.reduce((s, p) => s + p.pnlCNY, 0); 
+                const ws = res.filter(p => p.pnlCNY > 0); const tot = ws.reduce((s, p) => s + p.pnlCNY, 0); 
                 if(tot) ws.forEach(p => p.adjustedPnLCNY -= mag * (p.pnlCNY/tot)); 
-            } else { 
-                // Deficit: Add to losers (making them less negative)
-                const ls = res.filter(p => p.pnlCNY < 0); 
-                const tot = ls.reduce((s, p) => s + Math.abs(p.pnlCNY), 0); 
+            }
+            else { 
+                const ls = res.filter(p => p.pnlCNY < 0); const tot = ls.reduce((s, p) => s + Math.abs(p.pnlCNY), 0); 
                 if(tot) ls.forEach(p => p.adjustedPnLCNY += mag * (Math.abs(p.pnlCNY)/tot)); 
             }
             return res;
@@ -484,7 +480,7 @@
 
         function calculateTransfers(players) {
             let winners = players.filter(p => p.pnl > 0).sort((a,b) => b.pnl - a.pnl);
-            let losers = players.filter(p => p.pnl < 0).sort((a,b) => a.pnl - b.pnl); // Most negative first
+            let losers = players.filter(p => p.pnl < 0).sort((a,b) => a.pnl - b.pnl); 
             const txs = [];
             while(winners.length && losers.length) {
                 let w = winners[0], l = losers[0];
@@ -507,10 +503,19 @@
             const scoreCol = isAdmin ? getPublicCollection('scoreboard') : getPrivateCollection('private-scoreboard');
             const sid = Date.now().toString();
             try {
+                // FIXED: Transaction Logic (Reads before Writes)
                 await setDoc(doc(col, sid), { id: sid, date: dateStr, name, config: conf, playerResults: sessionPlayers.map(p => ({name: p.name, pnlCNY: p.adjustedPnLCNY})) });
+                
                 await runTransaction(db, async (t) => {
+                    const updates = [];
+                    // Phase 1: Reads
                     for (const p of sessionPlayers) {
-                        const ref = doc(scoreCol, p.name); const snap = await t.get(ref);
+                        const ref = doc(scoreCol, p.name);
+                        const snap = await t.get(ref);
+                        updates.push({ref, p, snap});
+                    }
+                    // Phase 2: Writes
+                    for (const {ref, p, snap} of updates) {
                         let hist = snap.exists() ? (snap.data().history || []).filter(h => h.sessionId !== sid) : [];
                         hist.push({sessionId: sid, date: dateStr, pnl: p.adjustedPnLCNY});
                         t.set(ref, {name: p.name, history: hist}, {merge: true});
@@ -526,7 +531,7 @@
 
         function clearSession() { if (!auth.currentUser || auth.currentUser.isAnonymous) return; sessionPlayers = []; document.getElementById('transfer-solution').classList.add('hidden'); updateSessionSummary(); }
 
-        // ... Load Functions (Simplified for brevity as logic is same) ...
+        // ... Load Functions ...
         async function loadSessions(isPublic) {
             const col = isPublic ? getPublicCollection('sessions') : getPrivateCollection('private-sessions');
             const div = document.getElementById(isPublic ? 'past-sessions-list' : 'private-sessions-list');
@@ -583,11 +588,22 @@
             const col = isPub ? getPublicCollection('sessions') : getPrivateCollection('private-sessions');
             const scol = isPub ? getPublicCollection('scoreboard') : getPrivateCollection('private-scoreboard');
             try {
+                // FIXED: Transaction Logic
                 await runTransaction(db, async (t) => {
-                    t.delete(doc(col, sid));
+                    // Phase 1: Reads
+                    const updates = [];
                     for(const r of res) {
-                        const ref = doc(scol, r.name); const s = await t.get(ref);
-                        if(s.exists()) t.set(ref, {history: s.data().history.filter(h => h.sessionId !== sid)}, {merge: true});
+                        const ref = doc(scol, r.name);
+                        const s = await t.get(ref);
+                        updates.push({ref, s});
+                    }
+                    // Phase 2: Writes
+                    t.delete(doc(col, sid));
+                    for(const {ref, s} of updates) {
+                        if(s.exists()) {
+                            const newHist = s.data().history.filter(h => h.sessionId !== sid);
+                            t.set(ref, {history: newHist}, {merge: true});
+                        }
                     }
                 });
                 alertModal("成功", "已删除"); isPub ? (window.loadPublicScoreboard(), window.loadPastSessions()) : (window.loadPrivateScoreboard(), window.loadPrivateSessions());
@@ -627,7 +643,6 @@
                     activeClass = 'active-sort text-main'; 
                 }
                 const align = col.id === 'name' ? 'text-left' : 'text-right';
-                // Using string 'true'/'false' for inline onclick to avoid JS parsing errors
                 return `<th class="px-6 py-3 ${align} text-xs font-medium uppercase tracking-wider sortable ${activeClass} hover:text-main" onclick="toggleSort('${isPublic}', '${col.id}')">${col.label} <span class="sort-icon">${sortIcon}</span></th>`;
             }).join('');
 
