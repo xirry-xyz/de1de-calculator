@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>de1de tracker</title>
+    <title>de1de tracker v2</title>
     <!-- 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -33,7 +33,7 @@
         }
 
         html.dark {
-            /* Dark Theme (Restored Geek Style) */
+            /* Dark Theme */
             --bg-body: #0d1117;
             --text-main: #e6edf3;
             --text-muted: #8b949e;
@@ -58,7 +58,6 @@
             transition: background-color 0.3s, color 0.3s;
         }
 
-        /* --- 样式工具类 --- */
         .text-main { color: var(--text-main); }
         .text-muted { color: var(--text-muted); }
         .bg-card { background-color: var(--bg-card); }
@@ -152,11 +151,11 @@
         .theme-toggle { background: none; border: none; cursor: pointer; padding: 8px; border-radius: 50%; color: var(--text-muted); transition: background-color 0.2s, color 0.2s; }
         .theme-toggle:hover { background-color: var(--bg-subtle); color: var(--text-main); }
 
-        /* Custom Tooltip Styles */
+        /* Custom Tooltip */
         #global-tooltip {
             position: fixed;
             z-index: 100;
-            max-width: 250px;
+            max-width: 260px;
             pointer-events: none;
             transition: opacity 0.15s ease-in-out;
         }
@@ -192,7 +191,7 @@
     <div class="min-h-screen p-4 sm:p-8 max-w-7xl mx-auto">
         <div class="flex flex-col md:flex-row justify-between items-center mb-10">
             <div>
-                <h1 class="text-3xl font-bold text-main tracking-tight">de1de tracker</h1>
+                <h1 class="text-3xl font-bold text-main tracking-tight">de1de tracker <span class="text-sm font-normal text-muted ml-2 bg-subtle px-2 py-0.5 rounded border border-subtle">v2.0</span></h1>
                 <p class="text-muted mt-1 text-sm">德州扑克牌局追踪与数据分析</p>
             </div>
             
@@ -323,14 +322,14 @@
                     <div><h2 class="text-xl font-bold text-main">总积分榜</h2><div class="flex items-center gap-2 mt-1"><span class="badge badge-admin">公共</span><span class="text-xs text-muted">点击表头排序，移至 ⓘ 查看说明</span></div></div>
                     <button onclick="loadPublicScoreboard()" class="btn-secondary px-3 py-1.5 rounded-lg text-xs font-medium mt-3 sm:mt-0">刷新列表</button>
                 </div>
-                <div class="overflow-x-auto"><table class="min-w-full divide-y divide-subtle"><thead class="table-header"><tr id="public-leaderboard-header"></tr></thead><tbody id="leaderboard-body" class="bg-card divide-y divide-subtle"><tr id="leaderboard-placeholder"><td colspan="9" class="px-6 py-10 text-center text-muted">加载中...</td></tr></tbody></table></div>
+                <div class="overflow-x-auto"><table class="min-w-full divide-y divide-subtle"><thead class="table-header"><tr id="public-leaderboard-header"></tr></thead><tbody id="leaderboard-body" class="bg-card divide-y divide-subtle"><tr id="leaderboard-placeholder"><td colspan="11" class="px-6 py-10 text-center text-muted">加载中...</td></tr></tbody></table></div>
             </div>
             <div class="card rounded-xl overflow-hidden">
                 <div class="px-6 py-5 border-b border-subtle bg-card flex flex-col sm:flex-row justify-between items-start sm:items-center">
                     <div><h2 class="text-xl font-bold text-main">私人积分榜</h2><div class="flex items-center gap-2 mt-1"><span class="badge badge-private">私人</span><span class="text-xs text-muted">点击表头排序</span></div></div>
                     <button onclick="loadPrivateScoreboard()" class="btn-secondary px-3 py-1.5 rounded-lg text-xs font-medium mt-3 sm:mt-0">刷新列表</button>
                 </div>
-                <div class="overflow-x-auto"><table class="min-w-full divide-y divide-subtle"><thead class="table-header"><tr id="private-leaderboard-header"></tr></thead><tbody id="private-leaderboard-body" class="bg-card divide-y divide-subtle"><tr id="private-leaderboard-placeholder"><td colspan="9" class="px-6 py-10 text-center text-muted">请登录以查看私人数据。</td></tr></tbody></table></div>
+                <div class="overflow-x-auto"><table class="min-w-full divide-y divide-subtle"><thead class="table-header"><tr id="private-leaderboard-header"></tr></thead><tbody id="private-leaderboard-body" class="bg-card divide-y divide-subtle"><tr id="private-leaderboard-placeholder"><td colspan="11" class="px-6 py-10 text-center text-muted">请登录以查看私人数据。</td></tr></tbody></table></div>
             </div>
         </div>
     </div>
@@ -362,67 +361,27 @@
             // Position above the icon
             const top = rect.top - el.offsetHeight - 8; 
             let left = rect.left - (el.offsetWidth / 2) + (rect.width / 2);
-            
             // Keep within viewport
             if (left < 10) left = 10;
             if (left + el.offsetWidth > window.innerWidth - 10) left = window.innerWidth - el.offsetWidth - 10;
-            
             el.style.top = `${top}px`;
             el.style.left = `${left}px`;
         };
-        
-        window.hideTooltip = () => {
-            document.getElementById('global-tooltip').classList.add('hidden');
-        };
+        window.hideTooltip = () => { document.getElementById('global-tooltip').classList.add('hidden'); };
 
         function getCurrentSessionConfig() { const chips = parseFloat(document.getElementById('chipsPerEntry').value); const cny = parseFloat(document.getElementById('cnyPerEntry').value); if (isNaN(chips) || chips <= 0 || isNaN(cny) || cny <= 0) return null; return { chipsPerEntry: chips, cnyPerEntry: cny }; }
         function getPublicCollection(collectionName) { return collection(db, `artifacts/${appId}/public/data/${collectionName}`); }
         function getPrivateCollection(collectionName) { if (userId === 'anonymous' || !db) return null; return collection(db, `artifacts/${appId}/users/${userId}/${collectionName}`); }
 
-        // --- FIXED ALERT MODAL ---
         window.alertModal = function(title, message) {
-            const existing = document.getElementById('custom-modal-overlay');
-            if (existing) document.body.removeChild(existing);
-
-            const overlay = document.createElement('div');
-            overlay.id = 'custom-modal-overlay';
-            overlay.className = 'fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm transition-opacity duration-300 opacity-0';
-            
-            const card = document.createElement('div');
-            card.className = 'w-full max-w-sm p-6 rounded-2xl shadow-2xl transform scale-95 transition-all duration-300 bg-white dark:bg-[#161b22] border border-gray-200 dark:border-gray-700';
-            
-            card.innerHTML = `
-                <h3 class="text-lg font-bold mb-2 text-gray-900 dark:text-white">${title}</h3>
-                <p class="text-gray-500 dark:text-gray-400 mb-6 text-sm leading-relaxed">${message}</p>
-                <button type="button" class="w-full btn-primary font-medium py-2.5 rounded-lg transition-colors shadow-lg">确定</button>
-            `;
-            
-            overlay.appendChild(card);
-            document.body.appendChild(overlay);
-            
-            setTimeout(() => {
-                overlay.classList.remove('opacity-0');
-                card.classList.remove('scale-95');
-                card.classList.add('scale-100');
-            }, 10);
-
-            const btn = card.querySelector('button');
-            const close = () => {
-                overlay.classList.add('opacity-0');
-                card.classList.remove('scale-100');
-                card.classList.add('scale-95');
-                
-                setTimeout(() => {
-                    if (document.body.contains(overlay)) {
-                        document.body.removeChild(overlay);
-                    }
-                }, 300);
-            };
-            
-            btn.onclick = (e) => {
-                e.stopPropagation();
-                close();
-            };
+            const existing = document.getElementById('custom-modal-overlay'); if (existing) document.body.removeChild(existing);
+            const overlay = document.createElement('div'); overlay.id = 'custom-modal-overlay'; overlay.className = 'fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm transition-opacity duration-300 opacity-0';
+            const card = document.createElement('div'); card.className = 'w-full max-w-sm p-6 rounded-2xl shadow-2xl transform scale-95 transition-all duration-300 bg-white dark:bg-[#161b22] border border-gray-200 dark:border-gray-700';
+            card.innerHTML = `<h3 class="text-lg font-bold mb-2 text-gray-900 dark:text-white">${title}</h3><p class="text-gray-500 dark:text-gray-400 mb-6 text-sm leading-relaxed">${message}</p><button type="button" class="w-full btn-primary font-medium py-2.5 rounded-lg transition-colors shadow-lg">确定</button>`;
+            overlay.appendChild(card); document.body.appendChild(overlay);
+            setTimeout(() => { overlay.classList.remove('opacity-0'); card.classList.remove('scale-95'); card.classList.add('scale-100'); }, 10);
+            const btn = card.querySelector('button'); const close = () => { overlay.classList.add('opacity-0'); card.classList.remove('scale-100'); card.classList.add('scale-95'); setTimeout(() => { if (document.body.contains(overlay)) document.body.removeChild(overlay); }, 300); };
+            btn.onclick = (e) => { e.stopPropagation(); close(); };
         };
 
         function toggleEditingUI(canEdit) {
@@ -487,14 +446,8 @@
             const res = players.map(p => ({...p, adjustedPnLCNY: p.pnlCNY})); 
             if (Math.abs(totalPnL) < 0.01) return res;
             const mag = Math.abs(totalPnL);
-            if (totalPnL > 0) { 
-                const ws = res.filter(p => p.pnlCNY > 0); const tot = ws.reduce((s, p) => s + p.pnlCNY, 0); 
-                if(tot) ws.forEach(p => p.adjustedPnLCNY -= mag * (p.pnlCNY/tot)); 
-            }
-            else { 
-                const ls = res.filter(p => p.pnlCNY < 0); const tot = ls.reduce((s, p) => s + Math.abs(p.pnlCNY), 0); 
-                if(tot) ls.forEach(p => p.adjustedPnLCNY += mag * (Math.abs(p.pnlCNY)/tot)); 
-            }
+            if (totalPnL > 0) { const ws = res.filter(p => p.pnlCNY > 0); const tot = ws.reduce((s, p) => s + p.pnlCNY, 0); if(tot) ws.forEach(p => p.adjustedPnLCNY -= mag * (p.pnlCNY/tot)); }
+            else { const ls = res.filter(p => p.pnlCNY < 0); const tot = ls.reduce((s, p) => s + Math.abs(p.pnlCNY), 0); if(tot) ls.forEach(p => p.adjustedPnLCNY += mag * (Math.abs(p.pnlCNY)/tot)); }
             return res;
         }
 
@@ -605,21 +558,103 @@
         }
         
         function calculateMetrics(name, history) {
-            const pnls = history.map(h => h.pnl); const n = pnls.length; if(!n) return {name, score:0, totalPnL:0, avgPnL:0, winRate:0, volatility:0, sharpe:0, maxLosingStreak:0, totalSessions:0};
-            const tot = pnls.reduce((a,b)=>a+b,0); const avg = tot/n;
-            const vari = pnls.reduce((a,b)=>a+Math.pow(b-avg,2),0)/n; const vol = Math.sqrt(vari);
+            const pnls = history.map(h => h.pnl); 
+            const n = pnls.length; 
+            if(!n) return {name, score:0, totalPnL:0, avgPnL:0, winRate:0, volatility:0, sharpe:0, maxLosingStreak:0, totalSessions:0, profitFactor:0, maxDrawdown:0};
+            
+            const tot = pnls.reduce((a,b)=>a+b,0); 
+            const avg = tot/n;
+            const vari = pnls.reduce((a,b)=>a+Math.pow(b-avg,2),0)/n; 
+            const vol = Math.sqrt(vari);
             let ls=0, maxLs=0; pnls.forEach(p=>{ if(p<-0.01) ls++; else ls=0; maxLs=Math.max(maxLs, ls); });
-            return {name, totalSessions:n, totalPnL:tot, avgPnL:avg, winRate: (pnls.filter(p=>p>0.01).length/n)*100, volatility:vol, sharpe: vol>0?avg/vol:0, maxLosingStreak:maxLs};
+            
+            const grossProfit = pnls.filter(p => p > 0).reduce((a, b) => a + b, 0);
+            const grossLoss = Math.abs(pnls.filter(p => p < 0).reduce((a, b) => a + b, 0));
+            const profitFactor = grossLoss === 0 ? (grossProfit > 0 ? Infinity : 0) : grossProfit / grossLoss;
+
+            let cumulative = 0;
+            let peak = 0;
+            let maxDrawdown = 0;
+            const sortedHistory = [...history].sort((a,b) => new Date(a.date) - new Date(b.date));
+            const sortedPnls = sortedHistory.map(h => h.pnl);
+            
+            for (let pnl of sortedPnls) {
+                cumulative += pnl;
+                if (cumulative > peak) {
+                    peak = cumulative;
+                }
+                let dd = peak - cumulative;
+                if (dd > maxDrawdown) {
+                    maxDrawdown = dd;
+                }
+            }
+
+            return {
+                name, 
+                totalSessions:n, 
+                totalPnL:tot, 
+                avgPnL:avg, 
+                winRate: (pnls.filter(p=>p>0.01).length/n)*100, 
+                volatility:vol, 
+                sharpe: vol>0?avg/vol:0, 
+                maxLosingStreak:maxLs,
+                profitFactor: profitFactor,
+                maxDrawdown: maxDrawdown
+            };
         }
         
         function calculateCompositeScores(stats) {
-            if(!stats.length) return [];
-            const getR = (k) => { const v = stats.map(s => s[k]); return [Math.min(...v), Math.max(...v)]; };
-            const [minS, maxS] = getR('sharpe'); const [minA, maxA] = getR('avgPnL'); const [minW, maxW] = getR('winRate');
-            const norm = (v, min, max) => max===min ? 0.5 : (v-min)/(max-min);
-            return stats.map(s => {
-                let sh = s.sharpe; if(!isFinite(sh)) sh = s.avgPnL>0 ? 5 : -1;
-                s.score = (norm(sh, minS, maxS)*35 + norm(s.avgPnL, minA, maxA)*25 + norm(s.winRate, minW, maxW)*20 + norm(s.totalSessions, 0, 50)*10 - norm(s.maxLosingStreak, 0, 10)*10);
+            if (stats.length === 0) return [];
+
+            const cleanStats = stats.map(s => {
+                let sh = s.sharpe;
+                if (!isFinite(sh)) sh = s.avgPnL > 0 ? 10 : -1; 
+                
+                let pf = s.profitFactor;
+                if (!isFinite(pf)) pf = 20; 
+
+                return { ...s, _sh: sh, _pf: pf };
+            });
+
+            const getRange = (key) => {
+                const values = cleanStats.map(s => s[key]);
+                return { min: Math.min(...values), max: Math.max(...values) };
+            };
+
+            const ranges = {
+                sharpe: getRange('_sh'),
+                profitFactor: getRange('_pf'),
+                avgPnL: getRange('avgPnL'),
+                winRate: getRange('winRate'),
+                maxDrawdown: getRange('maxDrawdown'),
+                totalSessions: getRange('totalSessions')
+            };
+
+            const normalize = (val, min, max, invert = false) => {
+                if (max === min) return 0.5;
+                const norm = (val - min) / (max - min);
+                return invert ? 1 - norm : norm;
+            };
+
+            const W = {
+                sharpe: 0.25,
+                profitFactor: 0.20,
+                avgPnL: 0.15,
+                winRate: 0.15,
+                maxDrawdown: 0.15, 
+                sessions: 0.10
+            };
+
+            return cleanStats.map(s => {
+                const n_sh = normalize(s._sh, ranges.sharpe.min, ranges.sharpe.max);
+                const n_pf = normalize(s._pf, ranges.profitFactor.min, ranges.profitFactor.max);
+                const n_ap = normalize(s.avgPnL, ranges.avgPnL.min, ranges.avgPnL.max);
+                const n_wr = normalize(s.winRate, ranges.winRate.min, ranges.winRate.max);
+                const n_md = normalize(s.maxDrawdown, ranges.maxDrawdown.min, ranges.maxDrawdown.max, true);
+                const n_ss = normalize(s.totalSessions, ranges.totalSessions.min, ranges.totalSessions.max);
+
+                const raw = (n_sh * W.sharpe) + (n_pf * W.profitFactor) + (n_ap * W.avgPnL) + (n_wr * W.winRate) + (n_md * W.maxDrawdown) + (n_ss * W.sessions);
+                s.score = 50 + (raw * 49);
                 return s;
             });
         }
@@ -674,12 +709,14 @@
             // Updated columns definition with Tooltips
             const columns = [
                 { id: 'name', label: '玩家' },
-                { id: 'score', label: '综合评分', tooltip: '基于多维度数据的加权评分 (0-100)。<br><br><span class="opacity-70">权重模型：</span><br>• 夏普比率: 35%<br>• 平均盈亏: 25%<br>• 胜率: 20%<br>• 总场次: 10%<br>• 最大连亏: -10%<br><br><span class="text-green-400">越高越好</span>' },
+                { id: 'score', label: '综合评分', tooltip: '基于六维数据的加权评分 (50-99)。<br><br><span class="opacity-70">权重模型：</span><br>• 夏普比率: 25%<br>• 盈亏比: 20%<br>• 平均盈亏: 15%<br>• 胜率: 15%<br>• 最大回撤: 15% (负相关)<br>• 总场次: 10%<br><br><span class="text-green-400">越高越好</span>' },
                 { id: 'totalPnL', label: '总盈亏' },
                 { id: 'avgPnL', label: '平均盈亏' },
                 { id: 'winRate', label: '胜率' },
+                { id: 'profitFactor', label: '盈亏比', tooltip: '盈亏比 = 总盈利 / |总亏损|。<br>衡量盈利效率。<br> >1.0 为盈利，>1.5 优秀。<br><br><span class="text-green-400">越大越好</span>' },
                 { id: 'volatility', label: '波动率', tooltip: '历史盈亏的标准差。<br>衡量资金曲线的波动程度。<br>数值越低代表发挥越稳健。<br><br><span class="text-green-400">越小越好</span>' },
                 { id: 'sharpe', label: 'SHARPE', tooltip: '夏普比率 = 平均盈亏 / 波动率。<br>衡量风险调整后的收益。<br>代表玩家的技术含金量。<br><br><span class="text-green-400">越高越好</span>' },
+                { id: 'maxDrawdown', label: '最大回撤', tooltip: '资金曲线从最高点下跌的最大幅度。<br>衡量抗风险能力和最大潜在损失。<br><br><span class="text-green-400">越小越好</span>' },
                 { id: 'maxLosingStreak', label: '连亏' },
                 { id: 'totalSessions', label: '局数' }
             ];
@@ -693,21 +730,19 @@
                 }
                 const align = col.id === 'name' ? 'text-left' : 'text-right';
                 
-                // Info icon if tooltip exists
                 let infoIcon = '';
                 if (col.tooltip) {
-                    // Safe string escaping for HTML attribute
                     const safeTip = col.tooltip.replace(/'/g, "&apos;").replace(/"/g, "&quot;");
                     infoIcon = `<span class="info-icon" onmouseenter="showTooltip(event, '${safeTip}')" onmouseleave="hideTooltip()">i</span>`;
                 }
 
-                return `<th class="px-6 py-3 ${align} text-xs font-medium uppercase tracking-wider sortable ${activeClass} hover:text-main" onclick="toggleSort('${isPublic}', '${col.id}')">
+                return `<th class="px-4 py-3 ${align} text-xs font-medium uppercase tracking-wider sortable ${activeClass} hover:text-main whitespace-nowrap" onclick="toggleSort('${isPublic}', '${col.id}')">
                             ${col.label}${infoIcon} <span class="sort-icon">${sortIcon}</span>
                         </th>`;
             }).join('');
 
             if (stats.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="9" class="px-6 py-10 text-center text-muted">暂无数据</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="11" class="px-6 py-10 text-center text-muted">暂无数据</td></tr>`;
                 return;
             }
 
@@ -724,12 +759,14 @@
             tbody.innerHTML = '';
             stats.forEach(s => {
                 const pnlClass = s.totalPnL > 0.01 ? 'bg-win-sub' : s.totalPnL < -0.01 ? 'bg-loss-sub' : 'text-muted';
+                
                 let sharpeText = isFinite(s.sharpe) ? s.sharpe.toFixed(2) : 'N/A';
                 if (s.sharpe === Infinity) sharpeText = '∞';
                 
-                let displayScore = Math.round(50 + s.score);
-                if (displayScore > 99) displayScore = 99;
-                if (displayScore < 10) displayScore = 10;
+                let pfText = isFinite(s.profitFactor) ? s.profitFactor.toFixed(2) : '∞';
+                if (s.profitFactor === Infinity) pfText = '∞';
+                
+                let displayScore = Math.round(s.score);
                 
                 let scoreColor = 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300';
                 if (displayScore >= 80) scoreColor = 'bg-purple-100 text-purple-700 font-bold dark:bg-purple-900/30 dark:text-purple-300';
@@ -738,15 +775,17 @@
 
                 tbody.innerHTML += `
                     <tr class="hover:bg-subtle transition-colors">
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-main">${s.name}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-right"><span class="inline-block px-2.5 py-0.5 rounded-full text-xs ${scoreColor}">${displayScore}</span></td>
-                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-mono"><span class="${pnlClass}">${s.totalPnL.toFixed(0)}</span></td>
-                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-muted font-mono">${s.avgPnL.toFixed(0)}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-muted font-mono">${s.winRate.toFixed(0)}%</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-muted font-mono">${s.volatility.toFixed(0)}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-muted font-mono">${sharpeText}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-muted font-mono">${s.maxLosingStreak}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-muted font-mono">${s.totalSessions}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-sm font-semibold text-main">${s.name}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-right"><span class="inline-block px-2.5 py-0.5 rounded-full text-xs ${scoreColor}">${displayScore}</span></td>
+                        <td class="px-4 py-4 whitespace-nowrap text-right text-sm font-mono"><span class="${pnlClass}">${s.totalPnL.toFixed(0)}</span></td>
+                        <td class="px-4 py-4 whitespace-nowrap text-right text-sm text-muted font-mono">${s.avgPnL.toFixed(0)}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-right text-sm text-muted font-mono">${s.winRate.toFixed(0)}%</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-right text-sm text-muted font-mono">${pfText}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-right text-sm text-muted font-mono">${s.volatility.toFixed(0)}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-right text-sm text-muted font-mono">${sharpeText}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-right text-sm text-muted font-mono">${s.maxDrawdown.toFixed(0)}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-right text-sm text-muted font-mono">${s.maxLosingStreak}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-right text-sm text-muted font-mono">${s.totalSessions}</td>
                     </tr>`;
             });
         }
