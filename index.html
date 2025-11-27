@@ -237,7 +237,7 @@
         // --- Authorization Configuration ---
         // ⚠️ 关键步骤 1: 请将此邮箱替换为您自己的 Google 账户邮箱，该账户将拥有编辑公共数据的权限
         // 🚨🚨🚨 如果此处仍为占位符，管理员权限将不会启用，您将无法删除公共数据！🚨🚨🚨
-        const ADMIN_EMAIL = 'xirry.xyz@gmail.com'; 
+        const ADMIN_EMAIL = 'xirry.xyz@gmail.com'; // **已为您更新**
         let isAdmin = false; 
 
         // Global variables for Firebase services
@@ -440,7 +440,7 @@
                         authButton.classList.add('bg-gray-600', 'hover:bg-gray-700');
                         
                         // 检查 ADMIN_EMAIL 是否已配置，并设置 isAdmin 状态
-                        if (ADMIN_EMAIL === 'xirry.xyz@gmail.com') {
+                        if (ADMIN_EMAIL === 'YOUR_ADMIN_EMAIL@gmail.com') {
                             isAdmin = false;
                             adminStatus.textContent = '⚠️ 警告: ADMIN_EMAIL 尚未配置。管理员权限已禁用。';
                             adminStatus.classList.remove('text-green-400', 'text-yellow-400');
@@ -471,7 +471,7 @@
                         
                         authStatus.textContent = '未登录。请使用 Google 账户登录。';
                         
-                        if (ADMIN_EMAIL === 'xirry.xyz@gmail.com') {
+                        if (ADMIN_EMAIL === 'YOUR_ADMIN_EMAIL@gmail.com') {
                             adminStatus.textContent = '⚠️ 警告: ADMIN_EMAIL 尚未配置。';
                         } else {
                             adminStatus.textContent = '🔒 编辑功能已锁定。';
