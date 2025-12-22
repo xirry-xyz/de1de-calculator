@@ -99,9 +99,14 @@ export default function App() {
             });
 
             await runTransaction(db, async (t) => {
+                const results = [];
                 for (const p of sessionPlayers) {
                     const ref = doc(db, scoreboardPath, p.name);
                     const snap = await t.get(ref);
+                    results.push({ p, ref, snap });
+                }
+
+                for (const { p, ref, snap } of results) {
                     let history = snap.exists() ? (snap.data().history || []) : [];
                     history = history.filter((h: any) => h.sessionId !== sid);
                     history.push({ sessionId: sid, date: dateStr, pnl: p.adjustedPnLCNY });
@@ -131,12 +136,17 @@ export default function App() {
 
         try {
             await runTransaction(db, async (t) => {
-                t.delete(doc(db, sessionPath, session.id));
+                const results = [];
                 for (const r of session.playerResults) {
                     const ref = doc(db, scoreboardPath, r.name);
                     const snap = await t.get(ref);
+                    results.push({ r, ref, snap });
+                }
+
+                t.delete(doc(db, sessionPath, session.id));
+                for (const { ref, snap } of results) {
                     if (snap.exists()) {
-                        const history = snap.data().history.filter((h: any) => h.sessionId !== session.id);
+                        const history = (snap.data().history || []).filter((h: any) => h.sessionId !== session.id);
                         t.set(ref, { history }, { merge: true });
                     }
                 }
