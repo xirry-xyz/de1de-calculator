@@ -83,7 +83,7 @@ export function ScoreboardTable({ data, title, scope }: ScoreboardTableProps) {
                                         {col.tooltip && (
                                             <TooltipProvider>
                                                 <Tooltip>
-                                                    <TooltipTrigger>
+                                                    <TooltipTrigger className="cursor-pointer">
                                                         <Info className="h-3 w-3 opacity-50" />
                                                     </TooltipTrigger>
                                                     <TooltipContent className="max-w-[200px]">

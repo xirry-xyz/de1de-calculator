@@ -111,25 +111,6 @@ export function SessionConfigForm({
                                 disabled={disabled}
                                 autoComplete="off"
                             />
-                            <ScrollArea className="h-[40px] mt-2">
-                                <div className="flex flex-wrap gap-1.5">
-                                    {historicalPlayers.map(name => (
-                                        <button
-                                            key={name}
-                                            onClick={() => setPlayerName(name)}
-                                            className={cn(
-                                                "px-2.5 py-1 rounded-full text-[10px] font-medium transition-all",
-                                                playerName === name
-                                                    ? "bg-primary text-primary-foreground"
-                                                    : "bg-white dark:bg-card border hover:border-primary/50 text-muted-foreground"
-                                            )}
-                                            disabled={disabled}
-                                        >
-                                            {name}
-                                        </button>
-                                    ))}
-                                </div>
-                            </ScrollArea>
                         </div>
                         <div className="space-y-2 text-left">
                             <Input
@@ -156,6 +137,27 @@ export function SessionConfigForm({
                         >
                             <Plus className="w-4 h-4 mr-1" /> 添加玩家
                         </Button>
+                    </div>
+                    <div className="mt-4 text-left">
+                        <ScrollArea className="h-[40px]">
+                            <div className="flex flex-wrap gap-1.5">
+                                {historicalPlayers.map(name => (
+                                    <button
+                                        key={name}
+                                        onClick={() => setPlayerName(name)}
+                                        className={cn(
+                                            "px-2.5 py-1 rounded-full text-[10px] font-medium transition-all cursor-pointer",
+                                            playerName === name
+                                                ? "bg-primary text-primary-foreground"
+                                                : "bg-white dark:bg-card border hover:border-primary/50 text-muted-foreground"
+                                        )}
+                                        disabled={disabled}
+                                    >
+                                        {name}
+                                    </button>
+                                ))}
+                            </div>
+                        </ScrollArea>
                     </div>
                 </div>
             </CardContent>
