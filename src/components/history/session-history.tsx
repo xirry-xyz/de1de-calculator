@@ -17,7 +17,7 @@ interface SessionHistoryProps {
 export function SessionHistory({ sessions, title, scope, onDelete, onRefresh, loading }: SessionHistoryProps) {
     return (
         <Card className="rounded-xl overflow-hidden shadow-sm h-[400px] flex flex-col">
-            <CardHeader className="bg-muted/50 border-b py-4 flex flex-row items-center justify-between">
+            <CardHeader className="bg-muted/50 border-b py-5 px-6 flex flex-row items-center justify-between">
                 <div>
                     <CardTitle className="text-lg font-bold flex items-center gap-2">
                         {scope === 'public' ? <Globe className="w-4 h-4 text-amber-500" /> : <Lock className="w-4 h-4 text-blue-500" />}

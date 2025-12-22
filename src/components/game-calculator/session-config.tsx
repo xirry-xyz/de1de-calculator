@@ -54,10 +54,10 @@ export function SessionConfigForm({
 
     return (
         <Card className="rounded-xl overflow-hidden shadow-sm">
-            <CardHeader className="bg-muted/50 border-b py-4">
+            <CardHeader className="bg-muted/50 border-b py-5 px-6">
                 <CardTitle className="text-lg font-bold">本局配置与录入</CardTitle>
             </CardHeader>
-            <CardContent className="p-6 space-y-6">
+            <CardContent className="px-6 pt-6 pb-8 space-y-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <Label className="text-muted-foreground">牌局名称 (选填)</Label>
@@ -100,8 +100,8 @@ export function SessionConfigForm({
                     </div>
                 </div>
 
-                <div className="bg-muted/30 rounded-xl p-5 border border-dashed text-center">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase mb-4 tracking-wider">添加玩家数据</p>
+                <div className="bg-muted/30 rounded-xl p-6 border border-dashed text-center">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase mb-6 tracking-wider">添加玩家数据</p>
                     <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
                         <div className="space-y-2 text-left">
                             <Input
@@ -138,27 +138,29 @@ export function SessionConfigForm({
                             <Plus className="w-4 h-4 mr-1" /> 添加玩家
                         </Button>
                     </div>
-                    <div className="mt-4 text-left">
-                        <ScrollArea className="h-[40px]">
-                            <div className="flex flex-wrap gap-1.5">
-                                {historicalPlayers.map(name => (
-                                    <button
-                                        key={name}
-                                        onClick={() => setPlayerName(name)}
-                                        className={cn(
-                                            "px-2.5 py-1 rounded-full text-[10px] font-medium transition-all cursor-pointer",
-                                            playerName === name
-                                                ? "bg-primary text-primary-foreground"
-                                                : "bg-white dark:bg-card border hover:border-primary/50 text-muted-foreground"
-                                        )}
-                                        disabled={disabled}
-                                    >
-                                        {name}
-                                    </button>
-                                ))}
-                            </div>
-                        </ScrollArea>
-                    </div>
+                    {historicalPlayers.length > 0 && (
+                        <div className="mt-6 text-left border-t border-muted pt-4">
+                            <ScrollArea className="h-[40px]">
+                                <div className="flex flex-wrap gap-1.5">
+                                    {historicalPlayers.map(name => (
+                                        <button
+                                            key={name}
+                                            onClick={() => setPlayerName(name)}
+                                            className={cn(
+                                                "px-2.5 py-1 rounded-full text-[10px] font-medium transition-all cursor-pointer",
+                                                playerName === name
+                                                    ? "bg-primary text-primary-foreground"
+                                                    : "bg-white dark:bg-card border hover:border-primary/50 text-muted-foreground"
+                                            )}
+                                            disabled={disabled}
+                                        >
+                                            {name}
+                                        </button>
+                                    ))}
+                                </div>
+                            </ScrollArea>
+                        </div>
+                    )}
                 </div>
             </CardContent>
         </Card>

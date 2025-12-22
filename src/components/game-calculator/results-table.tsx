@@ -24,7 +24,7 @@ export function ResultsTable({
 
     return (
         <Card className="rounded-xl overflow-hidden shadow-sm">
-            <CardHeader className="bg-muted/50 border-b py-4 flex flex-row items-center justify-between">
+            <CardHeader className="bg-muted/50 border-b py-5 px-6 flex flex-row items-center justify-between">
                 <CardTitle className="text-lg font-bold">当前结算预览</CardTitle>
                 <div className="text-sm font-medium">
                     差额: <span className={cn("font-bold", Math.abs(cnyDiscrepancy) > 0.1 ? "text-red-500" : "text-emerald-500")}>
@@ -93,7 +93,7 @@ export function ResultsTable({
                     </TableBody>
                 </Table>
             </div>
-            <CardFooter className="bg-muted/50 border-t p-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <CardFooter className="bg-muted/50 border-t p-6 flex flex-col sm:flex-row justify-between items-center gap-4">
                 <div className="flex gap-4 text-xs font-medium text-muted-foreground">
                     <span>总买入: <b className="text-foreground">{totalBuyIn}</b></span>
                     <span>总剩余: <b className="text-foreground">{totalFinal}</b></span>
