@@ -58,7 +58,7 @@ export function SessionConfigForm({
                 <CardTitle className="text-lg font-bold">本局配置与录入</CardTitle>
             </CardHeader>
             <CardContent className="px-6 pt-6 pb-8 space-y-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <div className="space-y-2">
                         <Label className="text-muted-foreground">牌局名称 (选填)</Label>
                         <Input
