@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>de1de tracker v2.1.1</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Light Theme */
+            --bg-body: #F9FAFB;
+            --text-main: #111827;
+            --text-muted: #6B7280;
+            --bg-card: #FFFFFF;
+            --border-card: #E5E7EB;
+            --bg-subtle: #F9FAFB;
+            --border-subtle: #F3F4F6;
+            --input-bg: #FFFFFF;
+            --input-border: #D1D5DB;
+            
+            --btn-primary-bg: #111827;
+            --btn-primary-text: #FFFFFF;
+            --btn-sec-bg: #FFFFFF;
+            --btn-sec-border: #D1D5DB;
+            --btn-sec-text: #374151;
+        }
+
+        html.dark {
+            /* Dark Theme */
+            --bg-body: #0d1117;
+            --text-main: #e6edf3;
+            --text-muted: #8b949e;
+            --bg-card: #161b22;
+            --border-card: #30363d;
+            --bg-subtle: #21262d; 
+            --border-subtle: #30363d; 
+            --input-bg: #0d1117;
+            --input-border: #30363d;
+
+            --btn-primary-bg: #238636;
+            --btn-primary-text: #ffffff;
+            --btn-sec-bg: #21262d;
+            --btn-sec-border: #30363d;
+            --btn-sec-text: #c9d1d9;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .text-main { color: var(--text-main); }
+        .text-muted { color: var(--text-muted); }
+        .bg-card { background-color: var(--bg-card); }
+        .bg-subtle { background-color: var(--bg-subtle); }
+        .border-subtle { border-color: var(--border-subtle); }
+        
+        .divide-subtle > :not([hidden]) ~ :not([hidden]) {
+            border-color: var(--border-subtle);
+        }
+        
+        .card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-card);
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+
+        .btn-primary {
+            background-color: var(--btn-primary-bg);
+            color: var(--btn-primary-text);
+            transition: all 0.2s;
+        }
+        .btn-primary:hover:not(:disabled) {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+        
+        .btn-secondary {
+            background-color: var(--btn-sec-bg);
+            border: 1px solid var(--btn-sec-border);
+            color: var(--btn-sec-text);
+            transition: all 0.2s;
+        }
+        .btn-secondary:hover:not(:disabled) {
+            filter: brightness(0.95);
+        }
+
+        .input-field {
+            background-color: var(--input-bg);
+            border: 1px solid var(--input-border);
+            color: var(--text-main);
+            transition: border-color 0.2s, box-shadow 0.2s, background-color 0.3s;
+        }
+        .input-field:disabled {
+            background-color: var(--bg-subtle);
+            color: var(--text-muted);
+            cursor: not-allowed;
+            border-color: var(--border-card);
+        }
+        .input-field:focus {
+            outline: none;
+            border-color: var(--text-main);
+            box-shadow: 0 0 0 1px var(--text-main);
+        }
+        html.dark .input-field:focus {
+            border-color: #58a6ff;
+            box-shadow: 0 0 0 1px #58a6ff;
+        }
+
+        .table-header {
+            background-color: var(--bg-subtle);
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        
+        /* Badges */
+        .text-win { color: #059669; } 
+        .bg-win-sub { background-color: #D1FAE5; color: #065F46; padding: 2px 6px; border-radius: 4px; font-weight: 600; }
+        html.dark .text-win { color: #3fb950; }
+        html.dark .bg-win-sub { background-color: rgba(46, 160, 67, 0.15); color: #3fb950; }
+
+        .text-loss { color: #DC2626; } 
+        .bg-loss-sub { background-color: #FEE2E2; color: #991B1B; padding: 2px 6px; border-radius: 4px; font-weight: 600; }
+        html.dark .text-loss { color: #f85149; }
+        html.dark .bg-loss-sub { background-color: rgba(248, 81, 73, 0.15); color: #f85149; }
+        
+        .text-neutral { color: var(--text-muted); }
+        
+        .badge { display: inline-block; padding: 0.25rem 0.6rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.025em; }
+        .badge-admin { background-color: #FEF3C7; color: #92400E; }
+        html.dark .badge-admin { background-color: rgba(210, 153, 34, 0.15); color: #d29922; }
+        .badge-private { background-color: #E0E7FF; color: #3730A3; }
+        html.dark .badge-private { background-color: rgba(88, 166, 255, 0.15); color: #58a6ff; }
+        
+        th.sortable { cursor: pointer; user-select: none; transition: background-color 0.2s; }
+        th.sortable:hover { background-color: rgba(0,0,0,0.05); }
+        html.dark th.sortable:hover { background-color: rgba(255,255,255,0.05); }
+        th.sortable .sort-icon { margin-left: 4px; font-size: 0.8em; color: var(--text-muted); }
+        th.sortable.active-sort { color: var(--text-main); }
+        
+        .theme-toggle { background: none; border: none; cursor: pointer; padding: 8px; border-radius: 50%; color: var(--text-muted); transition: background-color 0.2s, color 0.2s; }
+        .theme-toggle:hover { background-color: var(--bg-subtle); color: var(--text-main); }
+
+        /* Custom Tooltip */
+        #global-tooltip {
+            position: fixed;
+            z-index: 100;
+            max-width: 260px;
+            pointer-events: none;
+            transition: opacity 0.15s ease-in-out;
+        }
+        .info-icon {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            margin-left: 4px;
+            border-radius: 50%;
+            border: 1px solid currentColor;
+            text-align: center;
+            line-height: 12px;
+            font-size: 10px;
+            color: var(--text-muted);
+            cursor: help;
+            opacity: 0.7;
+        }
+        .info-icon:hover { opacity: 1; color: var(--text-main); }
+
+        /* Scrollbar for chips */
+        .scrollbar-thin::-webkit-scrollbar { width: 4px; }
+        .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { background-color: #D1D5DB; border-radius: 20px; }
+        html.dark .scrollbar-thin::-webkit-scrollbar-thumb { background-color: #30363d; }
+        
+        /* Chip Styles */
+        .player-chip {
+            padding: 4px 10px;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            cursor: pointer;
+            background-color: var(--bg-subtle);
+            border: 1px solid var(--border-card);
+            color: var(--text-muted);
+            transition: all 0.15s;
+            user-select: none;
+        }
+        .player-chip:hover {
+            background-color: var(--border-subtle);
+            color: var(--text-main);
+            border-color: var(--text-muted);
+        }
+        .player-chip.active {
+            background-color: var(--btn-primary-bg);
+            color: var(--btn-primary-text);
+            border-color: var(--btn-primary-bg);
+        }
+    </style>
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            const sysDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (savedTheme === 'dark' || (!savedTheme && sysDark)) { document.documentElement.classList.add('dark'); } else { document.documentElement.classList.remove('dark'); }
+        })();
+    </script>
+</head>
+<body class="antialiased">
+
+    <!-- Global Tooltip Element -->
+    <div id="global-tooltip" class="hidden bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg p-3 shadow-xl leading-relaxed border border-gray-700 dark:border-gray-600"></div>
+
+    <div class="min-h-screen p-4 sm:p-8 max-w-7xl mx-auto">
+        <div class="flex flex-col md:flex-row justify-between items-center mb-10">
+            <div>
+                <h1 class="text-3xl font-bold text-main tracking-tight">de1de tracker <span class="text-sm font-normal text-muted ml-2 bg-subtle px-2 py-0.5 rounded border border-subtle">v2.1.1</span></h1>
+                <!-- Modified Subtitle -->
+                <p class="text-muted mt-1 text-sm">Never give up. Never.</p>
+            </div>
+            
+            <div class="flex items-center space-x-4 mt-4 md:mt-0">
+                <button onclick="toggleTheme()" class="theme-toggle" title="切换模式">
+                    <svg id="icon-sun" class="w-5 h-5 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                    <svg id="icon-moon" class="w-5 h-5 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                </button>
+
+                <div class="text-right hidden sm:block">
+                    <p id="auth-status" class="text-sm font-medium text-main">正在初始化...</p>
+                    <p id="admin-status" class="text-xs text-muted"></p>
+                </div>
+                <button id="auth-button" class="btn-primary py-2 px-5 rounded-lg text-sm font-medium shadow-sm opacity-50 cursor-not-allowed" disabled>
+                    加载中...
+                </button>
+            </div>
+        </div>
+        
+        <div class="sm:hidden mb-6 p-3 bg-subtle rounded-lg border border-subtle shadow-sm">
+            <p class="text-xs text-muted uppercase font-semibold mb-1">Status</p>
+            <p id="auth-status-mobile" class="text-sm font-medium text-main">...</p>
+            <p class="text-xs text-muted mt-1">ID: <span id="user-id-display" class="font-mono">...</span></p>
+        </div>
+
+        <!-- Session Config -->
+        <div class="card rounded-xl mb-8 overflow-hidden">
+            <div class="px-6 py-4 border-b border-subtle bg-subtle">
+                <h2 class="text-lg font-bold text-main">本局配置与录入</h2>
+            </div>
+            <div class="p-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
+                    <div>
+                        <label for="sessionName" class="block text-sm font-medium text-muted mb-1.5">牌局名称 (选填)</label>
+                        <input type="text" id="sessionName" class="input-field w-full p-2.5 rounded-lg" placeholder="例如: 周五养生局">
+                    </div>
+                    <div>
+                        <label for="sessionDate" class="block text-sm font-medium text-muted mb-1.5">牌局日期</label>
+                        <input type="date" id="sessionDate" class="input-field w-full p-2.5 rounded-lg">
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8 pb-8 border-b border-subtle">
+                    <div>
+                        <label for="chipsPerEntry" class="block text-sm font-medium text-muted mb-1.5">每手买入筹码数</label>
+                        <input type="number" id="chipsPerEntry" value="3000" class="input-field w-full p-2.5 rounded-lg" placeholder="3000">
+                    </div>
+                    <div>
+                        <label for="cnyPerEntry" class="block text-sm font-medium text-muted mb-1.5">每手买入对应 CNY</label>
+                        <input type="number" id="cnyPerEntry" value="300" class="input-field w-full p-2.5 rounded-lg" placeholder="300">
+                    </div>
+                </div>
+                <div class="bg-subtle rounded-lg p-5 border border-subtle">
+                    <p class="text-xs font-semibold text-muted uppercase mb-3">添加玩家数据</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                        <div class="relative">
+                            <input type="text" id="playerName" class="input-field w-full p-2.5 rounded-lg" placeholder="玩家姓名" disabled autocomplete="off">
+                            <!-- Chips Container -->
+                            <div id="player-chips-container" class="flex flex-wrap gap-2 mt-3 max-h-24 overflow-y-auto scrollbar-thin"></div>
+                        </div>
+                        <!-- Removed default value="2" -->
+                        <div><input type="number" id="playerEntries" class="input-field w-full p-2.5 rounded-lg" placeholder="净买入次数" disabled></div>
+                        <!-- Removed default value="3000" -->
+                        <div><input type="number" id="playerFinalChips" class="input-field w-full p-2.5 rounded-lg" placeholder="最终筹码" disabled></div>
+                        <div><button onclick="addPlayerToSession()" id="add-player-btn" class="btn-primary w-full p-2.5 rounded-lg font-semibold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed" disabled>+ 添加玩家</button></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Session Results -->
+        <div class="card rounded-xl mb-8 overflow-hidden">
+            <div class="px-6 py-4 border-b border-subtle bg-subtle flex justify-between items-center">
+                <h2 class="text-lg font-bold text-main">当前结算预览</h2>
+                <div class="text-sm text-muted font-medium">差额: <span id="cny-discrepancy" class="font-bold text-main">0 CNY</span></div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-subtle">
+                    <thead class="table-header">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">玩家</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider">总买入</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider">最终筹码</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider">P&L (筹码)</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider">P&L (CNY)</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider">调整后 P&L</th>
+                            <th class="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="session-data-body" class="bg-card divide-y divide-subtle">
+                        <tr id="session-placeholder"><td colspan="7" class="px-6 py-10 text-center text-muted italic">暂无数据，请在上方添加玩家...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="bg-subtle px-6 py-4 border-t border-subtle flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
+                <div class="text-xs text-muted space-x-4">
+                    <span>总买入: <span id="total-buy-in" class="font-bold text-main">0</span></span>
+                    <span>总剩余: <span id="total-final-chips" class="font-bold text-main">0</span></span>
+                    <span>偏差: <span id="chip-discrepancy" class="font-bold text-main">0</span></span>
+                </div>
+                <div class="flex space-x-3">
+                    <button onclick="calculateSettlement()" class="btn-secondary px-4 py-2 rounded-lg text-sm font-medium shadow-sm">计算转账</button>
+                    <button onclick="clearSession()" id="clear-session-btn" class="btn-secondary px-4 py-2 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50" disabled>清空</button>
+                    <button onclick="saveSessionData()" id="save-session-btn" class="btn-primary px-4 py-2 rounded-lg text-sm font-medium shadow-sm disabled:opacity-50" disabled>保存牌局</button>
+                </div>
+            </div>
+            <div id="transfer-solution" class="hidden border-t border-subtle bg-emerald-50/50 dark:bg-emerald-900/10 p-6">
+                <h3 class="text-sm font-bold text-emerald-800 dark:text-emerald-400 uppercase mb-3 flex items-center">最佳转账方案</h3>
+                <ul id="transfer-list" class="space-y-2 text-sm text-emerald-900 dark:text-emerald-300"></ul>
+            </div>
+        </div>
+        
+        <!-- Lists -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <div class="card rounded-xl overflow-hidden h-96 flex flex-col">
+                <div class="px-6 py-4 border-b border-subtle bg-subtle flex justify-between items-center sticky top-0">
+                    <div><h2 class="text-lg font-bold text-main">📜 历史牌局</h2><span class="badge badge-admin mt-1">公共数据</span></div>
+                    <button onclick="loadPastSessions()" class="text-muted hover:text-main transition-colors">↻</button>
+                </div>
+                <div id="past-sessions-list" class="flex-1 overflow-y-auto p-4 space-y-3 bg-subtle/50"><p class="text-center text-muted text-sm mt-10" id="sessions-loading-status">加载中...</p></div>
+            </div>
+            <div class="card rounded-xl overflow-hidden h-96 flex flex-col">
+                <div class="px-6 py-4 border-b border-subtle bg-subtle flex justify-between items-center sticky top-0">
+                    <div><h2 class="text-lg font-bold text-main">🔒 我的记录</h2><span class="badge badge-private mt-1">私人数据</span></div>
+                    <button onclick="loadPrivateSessions()" class="text-muted hover:text-main transition-colors">↻</button>
+                </div>
+                <div id="private-sessions-list" class="flex-1 overflow-y-auto p-4 space-y-3 bg-subtle/50"><p class="text-center text-muted text-sm mt-10" id="private-sessions-loading-status">登录后查看...</p></div>
+            </div>
+        </div>
+
+        <!-- Leaderboards -->
+        <div class="space-y-8">
+            <div class="card rounded-xl overflow-hidden">
+                <div class="px-6 py-5 border-b border-subtle bg-card flex flex-col sm:flex-row justify-between items-start sm:items-center">
+                    <div><h2 class="text-xl font-bold text-main">总积分榜</h2><div class="flex items-center gap-2 mt-1"><span class="badge badge-admin">公共</span><span class="text-xs text-muted">点击表头排序，移至 ⓘ 查看说明</span></div></div>
+                    <button onclick="loadPublicScoreboard()" class="btn-secondary px-3 py-1.5 rounded-lg text-xs font-medium mt-3 sm:mt-0">刷新列表</button>
+                </div>
+                <div class="overflow-x-auto"><table class="min-w-full divide-y divide-subtle"><thead class="table-header"><tr id="public-leaderboard-header"></tr></thead><tbody id="leaderboard-body" class="bg-card divide-y divide-subtle"><tr id="leaderboard-placeholder"><td colspan="11" class="px-6 py-10 text-center text-muted">加载中...</td></tr></tbody></table></div>
+            </div>
+            <div class="card rounded-xl overflow-hidden">
+                <div class="px-6 py-5 border-b border-subtle bg-card flex flex-col sm:flex-row justify-between items-start sm:items-center">
+                    <div><h2 class="text-xl font-bold text-main">私人积分榜</h2><div class="flex items-center gap-2 mt-1"><span class="badge badge-private">私人</span><span class="text-xs text-muted">点击表头排序</span></div></div>
+                    <button onclick="loadPrivateScoreboard()" class="btn-secondary px-3 py-1.5 rounded-lg text-xs font-medium mt-3 sm:mt-0">刷新列表</button>
+                </div>
+                <div class="overflow-x-auto"><table class="min-w-full divide-y divide-subtle"><thead class="table-header"><tr id="private-leaderboard-header"></tr></thead><tbody id="private-leaderboard-body" class="bg-card divide-y divide-subtle"><tr id="private-leaderboard-placeholder"><td colspan="11" class="px-6 py-10 text-center text-muted">请登录以查看私人数据。</td></tr></tbody></table></div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, doc, setDoc, getDoc, deleteDoc, getDocs, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        window.toggleTheme = function() { const html = document.documentElement; if (html.classList.contains('dark')) { html.classList.remove('dark'); localStorage.setItem('theme', 'light'); } else { html.classList.add('dark'); localStorage.setItem('theme', 'dark'); } };
+
+        const ADMIN_EMAIL = 'xirry.xyz@gmail.com'; 
+        let isAdmin = false; let db; let auth; let userId = 'anonymous'; 
+        let sessionPlayers = []; let publicLeaderboardData = []; let privateLeaderboardData = [];
+        let sortState = { public: { column: 'score', direction: 'desc' }, private: { column: 'score', direction: 'desc' } };
+
+        const MANUAL_FIREBASE_CONFIG = { apiKey: "***REMOVED***", authDomain: "de1de-calculator.firebaseapp.com", projectId: "de1de-calculator", storageBucket: "de1de-calculator.firebasestorage.app", messagingSenderId: "1076456073032", appId: "1:1076456073032:web:5402bb2cb74e6940bf757d" };
+        const appId = typeof __app_id !== 'undefined' ? __app_id : MANUAL_FIREBASE_CONFIG.projectId;
+        const firebaseConfig = typeof __firebase_config !== 'undefined' && __firebase_config.length > 0 ? JSON.parse(__firebase_config) : MANUAL_FIREBASE_CONFIG;
+        
+        window.addPlayerToSession = addPlayerToSession; window.removePlayer = removePlayer; window.calculateSettlement = calculateSettlement; window.saveSessionData = saveSessionData; window.clearSession = clearSession; window.calculateTransfers = calculateTransfers; window.deleteSession = deleteSession; window.signInWithGoogle = signInWithGoogle; window.signOutUser = signOutUser; window.loadPublicScoreboard = () => loadScoreboard(true); window.loadPrivateScoreboard = () => loadScoreboard(false); window.loadPastSessions = () => loadSessions(true); window.loadPrivateSessions = () => loadSessions(false); window.toggleSort = toggleSort;
+        window.fillPlayerName = fillPlayerName;
+
+        window.showTooltip = (event, content) => {
+            const el = document.getElementById('global-tooltip');
+            el.innerHTML = content;
+            el.classList.remove('hidden');
+            const rect = event.target.getBoundingClientRect();
+            const top = rect.top - el.offsetHeight - 8; 
+            let left = rect.left - (el.offsetWidth / 2) + (rect.width / 2);
+            if (left < 10) left = 10;
+            if (left + el.offsetWidth > window.innerWidth - 10) left = window.innerWidth - el.offsetWidth - 10;
+            el.style.top = `${top}px`; el.style.left = `${left}px`;
+        };
+        window.hideTooltip = () => { document.getElementById('global-tooltip').classList.add('hidden'); };
+
+        function getCurrentSessionConfig() { const chips = parseFloat(document.getElementById('chipsPerEntry').value); const cny = parseFloat(document.getElementById('cnyPerEntry').value); if (isNaN(chips) || chips <= 0 || isNaN(cny) || cny <= 0) return null; return { chipsPerEntry: chips, cnyPerEntry: cny }; }
+        function getPublicCollection(collectionName) { return collection(db, `artifacts/${appId}/public/data/${collectionName}`); }
+        function getPrivateCollection(collectionName) { if (userId === 'anonymous' || !db) return null; return collection(db, `artifacts/${appId}/users/${userId}/${collectionName}`); }
+
+        window.alertModal = function(title, message) {
+            const existing = document.getElementById('custom-modal-overlay'); if (existing) document.body.removeChild(existing);
+            const overlay = document.createElement('div'); overlay.id = 'custom-modal-overlay'; overlay.className = 'fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm transition-opacity duration-300 opacity-0';
+            const card = document.createElement('div'); card.className = 'w-full max-w-sm p-6 rounded-2xl shadow-2xl transform scale-95 transition-all duration-300 bg-white dark:bg-[#161b22] border border-gray-200 dark:border-gray-700';
+            card.innerHTML = `<h3 class="text-lg font-bold mb-2 text-gray-900 dark:text-white">${title}</h3><p class="text-gray-500 dark:text-gray-400 mb-6 text-sm leading-relaxed">${message}</p><button type="button" class="w-full btn-primary font-medium py-2.5 rounded-lg transition-colors shadow-lg">确定</button>`;
+            overlay.appendChild(card); document.body.appendChild(overlay);
+            setTimeout(() => { overlay.classList.remove('opacity-0'); card.classList.remove('scale-95'); card.classList.add('scale-100'); }, 10);
+            const btn = card.querySelector('button'); const close = () => { overlay.classList.add('opacity-0'); card.classList.remove('scale-100'); card.classList.add('scale-95'); setTimeout(() => { if (document.body.contains(overlay)) document.body.removeChild(overlay); }, 300); };
+            btn.onclick = (e) => { e.stopPropagation(); close(); };
+        };
+
+        function toggleEditingUI(canEdit) {
+            const inputs = ['playerName', 'playerEntries', 'playerFinalChips', 'add-player-btn', 'chipsPerEntry', 'cnyPerEntry', 'sessionName', 'sessionDate'];
+            inputs.forEach(id => { const el = document.getElementById(id); if (el) el.disabled = !canEdit; });
+            const actions = ['save-session-btn', 'clear-session-btn'];
+            actions.forEach(id => { const el = document.getElementById(id); if (el) { el.disabled = !canEdit; if (el.tagName === 'BUTTON') { el.classList.toggle('opacity-50', !canEdit); el.classList.toggle('cursor-not-allowed', !canEdit); } } });
+            
+            // Re-render chips when edit mode changes to update clickability if needed
+            renderPlayerChips();
+            updateSessionSummary();
+        }
+
+        async function signInWithGoogle() { if (!auth) return; try { await signInWithPopup(auth, new GoogleAuthProvider()); } catch (error) { alertModal("登录失败", error.message); } }
+        async function signOutUser() { if (!auth) return; try { await signOut(auth); alertModal("操作成功", "已退出"); } catch (error) { alertModal("操作失败", error.message); } }
+
+        async function initializeFirebase() {
+            const now = new Date(); const yyyy = now.getFullYear(); const mm = String(now.getMonth() + 1).padStart(2, '0'); const dd = String(now.getDate()).padStart(2, '0');
+            document.getElementById('sessionDate').value = `${yyyy}-${mm}-${dd}`;
+            if (firebaseConfig.apiKey === 'REPLACE_WITH_YOUR_API_KEY') return;
+            try {
+                const app = initializeApp(firebaseConfig); auth = getAuth(app); db = getFirestore(app);
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) try { await signInWithCustomToken(auth, __initial_auth_token); } catch (e) {}
+                onAuthStateChanged(auth, (user) => {
+                    const btn = document.getElementById('auth-button'); btn.disabled = false; btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    if (user) {
+                        userId = user.uid; const isAnon = user.isAnonymous; isAdmin = (!isAnon && user.email === ADMIN_EMAIL);
+                        document.getElementById('user-id-display').textContent = userId.substring(0,8)+'...';
+                        document.getElementById('auth-status').textContent = isAnon ? '访客' : user.email;
+                        document.getElementById('admin-status').textContent = isAnon ? '只读' : (isAdmin ? '管理员' : '用户');
+                        btn.textContent = isAnon ? 'Google 登录' : '退出';
+                        btn.onclick = isAnon ? signInWithGoogle : signOutUser;
+                        loadScoreboard(true); loadSessions(true);
+                        if (!isAnon) { loadScoreboard(false); loadSessions(false); }
+                        toggleEditingUI(!isAnon);
+                    } else {
+                        userId = 'anonymous'; isAdmin = false;
+                        document.getElementById('auth-status').textContent = '未登录'; btn.textContent = 'Google 登录'; btn.onclick = signInWithGoogle;
+                        loadScoreboard(true); loadSessions(true); toggleEditingUI(false);
+                    }
+                });
+            } catch (error) { console.error(error); }
+        }
+        
+        function addPlayerToSession() {
+            if (!auth.currentUser || auth.currentUser.isAnonymous) return alertModal("限制", "请先登录");
+            const conf = getCurrentSessionConfig(); if (!conf) return alertModal("错误", "配置无效");
+            const name = document.getElementById('playerName').value.trim();
+            const entries = parseFloat(document.getElementById('playerEntries').value);
+            const finalChips = parseFloat(document.getElementById('playerFinalChips').value);
+            if (!name || isNaN(entries) || isNaN(finalChips)) return alertModal("错误", "检查输入");
+            const pnlChips = finalChips - (entries * conf.chipsPerEntry);
+            const pnlCNY = pnlChips * (conf.cnyPerEntry / conf.chipsPerEntry);
+            const existingIndex = sessionPlayers.findIndex(p => p.name === name);
+            const newPlayer = { id: Date.now()+Math.random(), name, entries, totalBuyInChips: Math.round(entries * conf.chipsPerEntry), finalChips: Math.round(finalChips), pnlChips: Math.round(pnlChips), pnlCNY, adjustedPnLCNY: pnlCNY, sessionConfig: conf };
+            if (existingIndex !== -1) sessionPlayers[existingIndex] = newPlayer; else sessionPlayers.push(newPlayer);
+            document.getElementById('playerName').value = ''; 
+            
+            // FIX: Remove reset to default values, clear instead
+            document.getElementById('playerEntries').value = ''; 
+            document.getElementById('playerFinalChips').value = '';
+            
+            // Reset chips selection style
+            const chips = document.querySelectorAll('.player-chip');
+            chips.forEach(c => c.classList.remove('active'));
+            
+            updateSessionSummary();
+        }
+        
+        function removePlayer(id) { if (!auth.currentUser || auth.currentUser.isAnonymous) return; sessionPlayers = sessionPlayers.filter(p => p.id !== id); updateSessionSummary(); }
+        
+        function adjustDiscrepancy(players) {
+            let totalPnL = players.reduce((s, p) => s + p.pnlCNY, 0); 
+            const res = players.map(p => ({...p, adjustedPnLCNY: p.pnlCNY})); 
+            if (Math.abs(totalPnL) < 0.01) return res;
+            const mag = Math.abs(totalPnL);
+            if (totalPnL > 0) { const ws = res.filter(p => p.pnlCNY > 0); const tot = ws.reduce((s, p) => s + p.pnlCNY, 0); if(tot) ws.forEach(p => p.adjustedPnLCNY -= mag * (p.pnlCNY/tot)); }
+            else { const ls = res.filter(p => p.pnlCNY < 0); const tot = ls.reduce((s, p) => s + Math.abs(p.pnlCNY), 0); if(tot) ls.forEach(p => p.adjustedPnLCNY += mag * (Math.abs(p.pnlCNY)/tot)); }
+            return res;
+        }
+
+        function updateSessionSummary() {
+            sessionPlayers = adjustDiscrepancy(sessionPlayers);
+            const tbody = document.getElementById('session-data-body'); tbody.innerHTML = '';
+            let tBuy = 0, tFinal = 0, tPnL = 0; const canEdit = auth && auth.currentUser && !auth.currentUser.isAnonymous;
+            if (sessionPlayers.length === 0) tbody.innerHTML = '<tr id="session-placeholder"><td colspan="7" class="px-6 py-10 text-center text-muted italic">暂无数据...</td></tr>';
+            else sessionPlayers.forEach(p => {
+                tBuy += p.totalBuyInChips; tFinal += p.finalChips; tPnL += p.adjustedPnLCNY;
+                const pnlCls = p.adjustedPnLCNY > 0.01 ? 'text-win font-bold' : p.adjustedPnLCNY < -0.01 ? 'text-loss font-bold' : 'text-neutral';
+                const delBtn = canEdit ? `<button onclick="removePlayer(${p.id})" class="text-red-500 hover:text-red-700 text-xs font-semibold uppercase">删除</button>` : '';
+                tbody.innerHTML += `<tr class="hover:bg-subtle transition-colors"><td class="px-6 py-4 text-sm font-medium text-main">${p.name}</td><td class="px-6 py-4 text-right text-sm text-muted font-mono">${p.totalBuyInChips}</td><td class="px-6 py-4 text-right text-sm text-muted font-mono">${p.finalChips}</td><td class="px-6 py-4 text-right text-sm ${pnlCls} font-mono">${p.pnlChips}</td><td class="px-6 py-4 text-right text-sm ${pnlCls} font-mono">${p.pnlCNY.toFixed(2)}</td><td class="px-6 py-4 text-right text-sm ${pnlCls} font-mono bg-opacity-10">${p.adjustedPnLCNY.toFixed(2)}</td><td class="px-6 py-4 text-center">${delBtn}</td></tr>`;
+            });
+            document.getElementById('total-buy-in').textContent = tBuy; document.getElementById('total-final-chips').textContent = tFinal;
+            document.getElementById('chip-discrepancy').textContent = tFinal - tBuy;
+            document.getElementById('cny-discrepancy').textContent = tPnL.toFixed(2) + ' CNY';
+            if (!document.getElementById('transfer-solution').classList.contains('hidden')) calculateSettlement();
+        }
+
+        function calculateSettlement() {
+            if (sessionPlayers.length === 0) return alertModal("提示", "无数据");
+            const txs = calculateTransfers(sessionPlayers.map(p => ({name: p.name, pnl: p.adjustedPnLCNY})));
+            const list = document.getElementById('transfer-list'); list.innerHTML = '';
+            if (txs.length === 0) list.innerHTML = '<li>🎉 无需转账</li>';
+            else txs.forEach(t => list.innerHTML += `<li><span class="font-bold text-main">${t.from}</span> <span class="text-muted">→</span> <span class="font-bold text-main">${t.to}</span> <span class="float-right font-mono font-bold">${t.amount.toFixed(2)}</span></li>`);
+            document.getElementById('transfer-solution').classList.remove('hidden');
+        }
+
+        function calculateTransfers(players) {
+            let winners = players.filter(p => p.pnl > 0).sort((a,b) => b.pnl - a.pnl);
+            let losers = players.filter(p => p.pnl < 0).sort((a,b) => a.pnl - b.pnl); 
+            const txs = [];
+            while(winners.length && losers.length) {
+                let w = winners[0], l = losers[0];
+                let amt = Math.min(w.pnl, Math.abs(l.pnl));
+                txs.push({from: l.name, to: w.name, amount: amt});
+                w.pnl -= amt; l.pnl += amt;
+                if(w.pnl < 0.01) winners.shift(); if(Math.abs(l.pnl) < 0.01) losers.shift();
+            }
+            return txs;
+        }
+
+        async function saveSessionData() {
+            if (!auth.currentUser || auth.currentUser.isAnonymous) return alertModal("提示", "请登录");
+            if (!sessionPlayers.length) return alertModal("提示", "无数据");
+            const conf = getCurrentSessionConfig();
+            const name = document.getElementById('sessionName').value.trim() || '未命名';
+            const dateVal = document.getElementById('sessionDate').value;
+            const dateStr = dateVal ? new Date(dateVal + 'T00:00:00').toISOString() : new Date().toISOString();
+            const col = isAdmin ? getPublicCollection('sessions') : getPrivateCollection('private-sessions');
+            const scoreCol = isAdmin ? getPublicCollection('scoreboard') : getPrivateCollection('private-scoreboard');
+            const sid = Date.now().toString();
+            try {
+                await setDoc(doc(col, sid), { id: sid, date: dateStr, name, config: conf, playerResults: sessionPlayers.map(p => ({name: p.name, pnlCNY: p.adjustedPnLCNY})) });
+                await runTransaction(db, async (t) => {
+                    const updates = [];
+                    for (const p of sessionPlayers) {
+                        const ref = doc(scoreCol, p.name);
+                        const snap = await t.get(ref);
+                        updates.push({ref, p, snap});
+                    }
+                    for (const {ref, p, snap} of updates) {
+                        let hist = snap.exists() ? (snap.data().history || []).filter(h => h.sessionId !== sid) : [];
+                        hist.push({sessionId: sid, date: dateStr, pnl: p.adjustedPnLCNY});
+                        t.set(ref, {name: p.name, history: hist}, {merge: true});
+                    }
+                });
+                alertModal("成功", "已保存");
+                clearSession(); document.getElementById('sessionName').value = '';
+                const now = new Date(); const yyyy = now.getFullYear(); const mm = String(now.getMonth() + 1).padStart(2, '0'); const dd = String(now.getDate()).padStart(2, '0');
+                document.getElementById('sessionDate').value = `${yyyy}-${mm}-${dd}`;
+                isAdmin ? (window.loadPublicScoreboard(), window.loadPastSessions()) : (window.loadPrivateScoreboard(), window.loadPrivateSessions());
+            } catch (e) { alertModal("错误", e.message); }
+        }
+
+        function clearSession() { if (!auth.currentUser || auth.currentUser.isAnonymous) return; sessionPlayers = []; document.getElementById('transfer-solution').classList.add('hidden'); updateSessionSummary(); }
+
+        async function loadSessions(isPublic) {
+            const col = isPublic ? getPublicCollection('sessions') : getPrivateCollection('private-sessions');
+            const div = document.getElementById(isPublic ? 'past-sessions-list' : 'private-sessions-list');
+            if (!db || (!isPublic && (userId === 'anonymous' || auth.currentUser.isAnonymous))) return;
+            try {
+                const snap = await getDocs(col); const list = []; snap.forEach(d => list.push(d.data())); list.sort((a,b) => new Date(b.date) - new Date(a.date));
+                div.innerHTML = list.length ? '' : '<p class="text-center text-muted text-sm mt-10">暂无记录</p>';
+                list.forEach(s => {
+                    const d = new Date(s.date).toLocaleDateString('zh-CN');
+                    const summ = s.playerResults.map(p => `<span class="${p.pnlCNY>0?'text-win':p.pnlCNY<0?'text-loss':'text-muted'} mr-2">${p.name}</span>`).join('');
+                    const canDel = (isPublic && isAdmin) || (!isPublic && userId !== 'anonymous');
+                    const btn = canDel ? `<button onclick="deleteSession('${s.id}', '${JSON.stringify(s.playerResults).replace(/"/g, '&quot;')}', ${isPublic})" class="text-muted hover:text-red-500">🗑</button>` : '';
+                    div.innerHTML += `<div class="bg-card p-3 mb-2 rounded border border-subtle flex justify-between"><div><div class="font-bold text-main text-sm">${s.name||'未命名'} <span class="text-xs text-muted font-normal">${d}</span></div><div class="text-xs mt-1">${summ}</div></div>${btn}</div>`;
+                });
+            } catch(e) { div.innerHTML = '<p>Error</p>'; }
+        }
+
+        async function loadScoreboard(isPublic) {
+            const col = isPublic ? getPublicCollection('scoreboard') : getPrivateCollection('private-scoreboard');
+            if (!db || (!isPublic && (userId === 'anonymous' || auth.currentUser.isAnonymous))) return;
+            try {
+                const snap = await getDocs(col); const hist = []; snap.forEach(d => { if(d.data().history) d.data().history.forEach(h => hist.push({name: d.data().name, ...h})); });
+                const grp = hist.reduce((a, i) => { if(!a[i.name]) a[i.name]=[]; a[i.name].push(i); return a; }, {});
+                let stats = Object.keys(grp).map(k => calculateMetrics(k, grp[k]));
+                stats = calculateCompositeScores(stats);
+                if(isPublic) publicLeaderboardData = stats; else privateLeaderboardData = stats;
+                renderLeaderboard(isPublic);
+                renderPlayerChips(); // Update chips whenever scoreboard loads
+            } catch(e) {}
+        }
+        
+        // --- NEW: Render Player Chips ---
+        function renderPlayerChips() {
+            const container = document.getElementById('player-chips-container');
+            if (!container) return;
+            
+            // Combine public and private stats to get all names
+            let allStats = [];
+            if (publicLeaderboardData && publicLeaderboardData.length) allStats = allStats.concat(publicLeaderboardData);
+            if (privateLeaderboardData && privateLeaderboardData.length) allStats = allStats.concat(privateLeaderboardData);
+            
+            // Use a map to merge duplicate names (if any, though usually separated by scope)
+            // Ideally we just want unique names with their total sessions
+            const playerMap = new Map();
+            allStats.forEach(p => {
+                if (playerMap.has(p.name)) {
+                    playerMap.set(p.name, playerMap.get(p.name) + p.totalSessions);
+                } else {
+                    playerMap.set(p.name, p.totalSessions);
+                }
+            });
+            
+            // Sort by frequency (desc)
+            const sortedNames = Array.from(playerMap.entries())
+                                     .sort((a, b) => b[1] - a[1])
+                                     .map(entry => entry[0]);
+            
+            if (sortedNames.length === 0) {
+                container.innerHTML = '<span class="text-xs text-muted italic">暂无历史玩家</span>';
+                return;
+            }
+
+            container.innerHTML = sortedNames.map(name => 
+                `<span class="player-chip" onclick="fillPlayerName(this, '${name}')">${name}</span>`
+            ).join('');
+        }
+
+        function fillPlayerName(el, name) {
+            const input = document.getElementById('playerName');
+            if (input.disabled) return; // Don't allow filling if disabled
+            
+            input.value = name;
+            
+            // Highlight active chip
+            document.querySelectorAll('.player-chip').forEach(c => c.classList.remove('active'));
+            el.classList.add('active');
+        }
+        
+        function calculateMetrics(name, history) {
+            const pnls = history.map(h => h.pnl); 
+            const n = pnls.length; 
+            if(!n) return {name, score:0, totalPnL:0, avgPnL:0, winRate:0, volatility:0, sharpe:0, maxLosingStreak:0, totalSessions:0, profitFactor:0, maxDrawdown:0};
+            
+            const tot = pnls.reduce((a,b)=>a+b,0); 
+            const avg = tot/n;
+            const vari = pnls.reduce((a,b)=>a+Math.pow(b-avg,2),0)/n; 
+            const vol = Math.sqrt(vari);
+            let ls=0, maxLs=0; pnls.forEach(p=>{ if(p<-0.01) ls++; else ls=0; maxLs=Math.max(maxLs, ls); });
+            
+            const grossProfit = pnls.filter(p => p > 0).reduce((a, b) => a + b, 0);
+            const grossLoss = Math.abs(pnls.filter(p => p < 0).reduce((a, b) => a + b, 0));
+            const profitFactor = grossLoss === 0 ? (grossProfit > 0 ? Infinity : 0) : grossProfit / grossLoss;
+
+            let cumulative = 0;
+            let peak = 0;
+            let maxDrawdown = 0;
+            const sortedHistory = [...history].sort((a,b) => new Date(a.date) - new Date(b.date));
+            const sortedPnls = sortedHistory.map(h => h.pnl);
+            
+            for (let pnl of sortedPnls) {
+                cumulative += pnl;
+                if (cumulative > peak) {
+                    peak = cumulative;
+                }
+                let dd = peak - cumulative;
+                if (dd > maxDrawdown) {
+                    maxDrawdown = dd;
+                }
+            }
+
+            return {
+                name, 
+                totalSessions:n, 
+                totalPnL:tot, 
+                avgPnL:avg, 
+                winRate: (pnls.filter(p=>p>0.01).length/n)*100, 
+                volatility:vol, 
+                sharpe: vol>0?avg/vol:0, 
+                maxLosingStreak:maxLs,
+                profitFactor: profitFactor,
+                maxDrawdown: maxDrawdown
+            };
+        }
+        
+        function calculateCompositeScores(stats) {
+            if (stats.length === 0) return [];
+
+            const cleanStats = stats.map(s => {
+                let sh = s.sharpe;
+                if (!isFinite(sh)) sh = s.avgPnL > 0 ? 10 : -1; 
+                
+                let pf = s.profitFactor;
+                if (!isFinite(pf)) pf = 20; 
+
+                return { ...s, _sh: sh, _pf: pf };
+            });
+
+            const getRange = (key) => {
+                const values = cleanStats.map(s => s[key]);
+                return { min: Math.min(...values), max: Math.max(...values) };
+            };
+
+            const ranges = {
+                sharpe: getRange('_sh'),
+                profitFactor: getRange('_pf'),
+                avgPnL: getRange('avgPnL'),
+                winRate: getRange('winRate'),
+                maxDrawdown: getRange('maxDrawdown'),
+                totalSessions: getRange('totalSessions')
+            };
+
+            const normalize = (val, min, max, invert = false) => {
+                if (max === min) return 0.5;
+                const norm = (val - min) / (max - min);
+                return invert ? 1 - norm : norm;
+            };
+
+            const W = {
+                sharpe: 0.25,
+                profitFactor: 0.20,
+                avgPnL: 0.15,
+                winRate: 0.15,
+                maxDrawdown: 0.15, 
+                sessions: 0.10
+            };
+
+            return cleanStats.map(s => {
+                const n_sh = normalize(s._sh, ranges.sharpe.min, ranges.sharpe.max);
+                const n_pf = normalize(s._pf, ranges.profitFactor.min, ranges.profitFactor.max);
+                const n_ap = normalize(s.avgPnL, ranges.avgPnL.min, ranges.avgPnL.max);
+                const n_wr = normalize(s.winRate, ranges.winRate.min, ranges.winRate.max);
+                const n_md = normalize(s.maxDrawdown, ranges.maxDrawdown.min, ranges.maxDrawdown.max, true);
+                const n_ss = normalize(s.totalSessions, ranges.totalSessions.min, ranges.totalSessions.max);
+
+                const raw = (n_sh * W.sharpe) + (n_pf * W.profitFactor) + (n_ap * W.avgPnL) + (n_wr * W.winRate) + (n_md * W.maxDrawdown) + (n_ss * W.sessions);
+                s.score = 50 + (raw * 49);
+                return s;
+            });
+        }
+
+        async function deleteSession(sid, resStr, isPub) {
+            if(!confirm('确认删除?')) return;
+            const res = JSON.parse(resStr.replace(/&quot;/g, '"'));
+            const col = isPub ? getPublicCollection('sessions') : getPrivateCollection('private-sessions');
+            const scol = isPub ? getPublicCollection('scoreboard') : getPrivateCollection('private-scoreboard');
+            try {
+                await runTransaction(db, async (t) => {
+                    const updates = [];
+                    for(const r of res) {
+                        const ref = doc(scol, r.name);
+                        const s = await t.get(ref);
+                        updates.push({ref, s});
+                    }
+                    t.delete(doc(col, sid));
+                    for(const {ref, s} of updates) {
+                        if(s.exists()) {
+                            const newHist = s.data().history.filter(h => h.sessionId !== sid);
+                            t.set(ref, {history: newHist}, {merge: true});
+                        }
+                    }
+                });
+                alertModal("成功", "已删除"); isPub ? (window.loadPublicScoreboard(), window.loadPastSessions()) : (window.loadPrivateScoreboard(), window.loadPrivateSessions());
+            } catch(e) { alertModal("错误", e.message); }
+        };
+
+        function toggleSort(isPublicStr, column) {
+            const isPublic = (isPublicStr === 'true');
+            const state = isPublic ? sortState.public : sortState.private;
+            if (state.column === column) {
+                state.direction = state.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                state.column = column;
+                state.direction = 'desc';
+            }
+            renderLeaderboard(isPublic);
+        }
+
+        function renderLeaderboard(isPublic = true) {
+            const stats = isPublic ? publicLeaderboardData : privateLeaderboardData;
+            const state = isPublic ? sortState.public : sortState.private;
+            const tbodyId = isPublic ? 'leaderboard-body' : 'private-leaderboard-body';
+            const headerRowId = isPublic ? 'public-leaderboard-header' : 'private-leaderboard-header';
+            
+            const tbody = document.getElementById(tbodyId);
+            const headerRow = document.getElementById(headerRowId);
+            if (!tbody || !headerRow) return;
+
+            // Updated columns definition with Tooltips
+            const columns = [
+                { id: 'name', label: '玩家' },
+                { id: 'score', label: '综合评分', tooltip: '基于六维数据的加权评分 (50-99)。<br><br><span class="opacity-70">权重模型：</span><br>• 夏普比率: 25%<br>• 盈亏比: 20%<br>• 平均盈亏: 15%<br>• 胜率: 15%<br>• 最大回撤: 15% (负相关)<br>• 总场次: 10%<br><br><span class="text-green-400">越高越好</span>' },
+                { id: 'totalPnL', label: '总盈亏' },
+                { id: 'avgPnL', label: '平均盈亏' },
+                { id: 'winRate', label: '胜率' },
+                { id: 'profitFactor', label: '盈亏比', tooltip: '盈亏比 = 总盈利 / |总亏损|。<br>衡量盈利效率。<br> >1.0 为盈利，>1.5 优秀。<br><br><span class="text-green-400">越大越好</span>' },
+                { id: 'volatility', label: '波动率', tooltip: '历史盈亏的标准差。<br>衡量资金曲线的波动程度。<br>数值越低代表发挥越稳健。<br><br><span class="text-green-400">越小越好</span>' },
+                { id: 'sharpe', label: 'SHARPE', tooltip: '夏普比率 = 平均盈亏 / 波动率。<br>衡量风险调整后的收益。<br>代表玩家的技术含金量。<br><br><span class="text-green-400">越高越好</span>' },
+                { id: 'maxDrawdown', label: '最大回撤', tooltip: '资金曲线从最高点下跌的最大幅度。<br>衡量抗风险能力和最大潜在损失。<br><br><span class="text-green-400">越小越好</span>' },
+                { id: 'maxLosingStreak', label: '连亏' },
+                { id: 'totalSessions', label: '局数' }
+            ];
+            
+            headerRow.innerHTML = columns.map(col => {
+                let sortIcon = ''; 
+                let activeClass = ''; 
+                if (state.column === col.id) { 
+                    sortIcon = state.direction === 'asc' ? '↑' : '↓'; 
+                    activeClass = 'active-sort text-main'; 
+                }
+                const align = col.id === 'name' ? 'text-left' : 'text-right';
+                
+                let infoIcon = '';
+                if (col.tooltip) {
+                    const safeTip = col.tooltip.replace(/'/g, "&apos;").replace(/"/g, "&quot;");
+                    infoIcon = `<span class="info-icon" onmouseenter="showTooltip(event, '${safeTip}')" onmouseleave="hideTooltip()">i</span>`;
+                }
+
+                return `<th class="px-4 py-3 ${align} text-xs font-medium uppercase tracking-wider sortable ${activeClass} hover:text-main whitespace-nowrap" onclick="toggleSort('${isPublic}', '${col.id}')">
+                            ${col.label}${infoIcon} <span class="sort-icon">${sortIcon}</span>
+                        </th>`;
+            }).join('');
+
+            if (stats.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="11" class="px-6 py-10 text-center text-muted">暂无数据</td></tr>`;
+                return;
+            }
+
+            stats.sort((a, b) => {
+                let valA = a[state.column];
+                let valB = b[state.column];
+                if (!isFinite(valA)) valA = valA > 0 ? Number.MAX_VALUE : -Number.MAX_VALUE;
+                if (!isFinite(valB)) valB = valB > 0 ? Number.MAX_VALUE : -Number.MAX_VALUE;
+                
+                if (state.direction === 'asc') return valA > valB ? 1 : -1;
+                else return valA < valB ? 1 : -1;
+            });
+
+            tbody.innerHTML = '';
+            stats.forEach(s => {
+                const pnlClass = s.totalPnL > 0.01 ? 'bg-win-sub' : s.totalPnL < -0.01 ? 'bg-loss-sub' : 'text-muted';
+                
+                let sharpeText = isFinite(s.sharpe) ? s.sharpe.toFixed(2) : 'N/A';
+                if (s.sharpe === Infinity) sharpeText = '∞';
+                
+                let pfText = isFinite(s.profitFactor) ? s.profitFactor.toFixed(2) : '∞';
+                if (s.profitFactor === Infinity) pfText = '∞';
+                
+                let displayScore = Math.round(s.score);
+                
+                let scoreColor = 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300';
+                if (displayScore >= 80) scoreColor = 'bg-purple-100 text-purple-700 font-bold dark:bg-purple-900/30 dark:text-purple-300';
+                else if (displayScore >= 60) scoreColor = 'bg-emerald-100 text-emerald-700 font-bold dark:bg-emerald-900/30 dark:text-emerald-300';
+                else if (displayScore < 40) scoreColor = 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300';
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-subtle transition-colors">
+                        <td class="px-4 py-4 whitespace-nowrap text-sm font-semibold text-main">${s.name}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-right"><span class="inline-block px-2.5 py-0.5 rounded-full text-xs ${scoreColor}">${displayScore}</span></td>
+                        <td class="px-4 py-4 whitespace-nowrap text-right text-sm font-mono"><span class="${pnlClass}">${s.totalPnL.toFixed(0)}</span></td>
+                        <td class="px-4 py-4 whitespace-nowrap text-right text-sm text-muted font-mono">${s.avgPnL.toFixed(0)}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-right text-sm text-muted font-mono">${s.winRate.toFixed(0)}%</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-right text-sm text-muted font-mono">${pfText}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-right text-sm text-muted font-mono">${s.volatility.toFixed(0)}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-right text-sm text-muted font-mono">${sharpeText}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-right text-sm text-muted font-mono">${s.maxDrawdown.toFixed(0)}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-right text-sm text-muted font-mono">${s.maxLosingStreak}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-right text-sm text-muted font-mono">${s.totalSessions}</td>
+                    </tr>`;
+            });
+        }
+
+        window.onload = initializeFirebase;
+    </script>
+</body>
+</html>
