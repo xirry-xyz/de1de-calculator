@@ -22,7 +22,6 @@ export async function generateStyleEvaluations(
     if (!apiKey || stats.length === 0) return {};
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
     const playerData = stats.map(s => ({
         name: s.name,
@@ -89,19 +88,42 @@ ${JSON.stringify(playerData, null, 2)}
 
 请直接返回一个 JSON 对象，格式为 {"玩家名": "完整评价（含emoji和风格标签）"}，不要包含 markdown 代码块标记，不要有任何其他文字。`;
 
-    const result = await model.generateContent(prompt);
-    const text = result.response.text().trim();
+    // Try with retries and model fallback for rate limits
+    const models = ["gemini-2.5-flash", "gemini-2.0-flash"];
+    let lastError: Error | null = null;
 
-    // Strip markdown code block if present
-    const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+    for (const modelName of models) {
+        const model = genAI.getGenerativeModel({ model: modelName });
+        for (let attempt = 0; attempt < 3; attempt++) {
+            try {
+                if (attempt > 0) {
+                    // Exponential backoff: 2s, 4s, 8s
+                    await new Promise(r => setTimeout(r, 2000 * Math.pow(2, attempt - 1)));
+                }
+                const result = await model.generateContent(prompt);
+                const text = result.response.text().trim();
 
-    try {
-        return JSON.parse(cleaned) as Record<string, string>;
-    } catch {
-        const match = cleaned.match(/\{[\s\S]*\}/);
-        if (match) {
-            return JSON.parse(match[0]) as Record<string, string>;
+                const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+                try {
+                    return JSON.parse(cleaned) as Record<string, string>;
+                } catch {
+                    const match = cleaned.match(/\{[\s\S]*\}/);
+                    if (match) {
+                        return JSON.parse(match[0]) as Record<string, string>;
+                    }
+                    throw new Error("AI 返回格式异常，请重试");
+                }
+            } catch (e: any) {
+                lastError = e;
+                const msg = e.message || "";
+                // Only retry on 429 rate limit errors
+                if (msg.includes("429") || msg.includes("Resource exhausted")) {
+                    continue; // retry same model or fall through to next model
+                }
+                throw e; // non-retryable error, throw immediately
+            }
         }
-        throw new Error("AI 返回格式异常，请重试");
     }
+
+    throw lastError || new Error("所有模型均已超出速率限制，请稍后再试");
 }

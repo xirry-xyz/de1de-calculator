@@ -78,6 +78,8 @@ export function ScoreboardTable({ data, title, scope, userId }: ScoreboardTableP
             const msg = e.message || "生成失败";
             if (msg.includes("API_KEY") || msg.includes("401") || msg.includes("403")) {
                 toast.error("API Key 无效或无权限，请检查");
+            } else if (msg.includes("429") || msg.includes("Resource exhausted") || msg.includes("速率限制")) {
+                toast.error("API 调用频率超限，请等待 1 分钟后重试");
             } else {
                 toast.error("生成失败: " + msg);
             }
@@ -239,7 +241,7 @@ export function ScoreboardTable({ data, title, scope, userId }: ScoreboardTableP
                                                     <TooltipContent
                                                         side="right"
                                                         align="start"
-                                                        className="max-w-[320px] px-4 py-3 text-sm leading-relaxed whitespace-pre-line bg-popover border shadow-lg"
+                                                        className="max-w-[320px] px-4 py-3 text-sm leading-relaxed whitespace-pre-line bg-popover text-popover-foreground border shadow-lg"
                                                     >
                                                         {evaluations[s.name]}
                                                     </TooltipContent>
