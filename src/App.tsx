@@ -402,7 +402,7 @@ export default function App() {
                                     data={sharedStats}
                                     title={`${sharedBoard.displayName} 的积分榜`}
                                     scope="shared"
-                                    userId={user?.uid}
+                                    userId={sharedBoard.uid}
                                 />
                             </div>
                         )}

@@ -47,8 +47,9 @@ export function ScoreboardTable({ data, title, scope, userId }: ScoreboardTableP
 
     // Load saved evaluations from Firestore on mount
     useEffect(() => {
-        if (scope === 'shared') return;
-        loadEvaluations(scope, userId).then(saved => {
+        // For shared boards, load from the owner's private evaluations path
+        const loadScope = scope === 'shared' ? 'private' : scope;
+        loadEvaluations(loadScope, userId).then(saved => {
             if (Object.keys(saved).length > 0) setEvaluations(saved);
         }).catch(() => { /* ignore load errors */ });
     }, [scope, userId]);
