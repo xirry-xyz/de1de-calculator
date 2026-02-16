@@ -318,11 +318,13 @@ export default function App() {
                             data={publicStats}
                             title="总积分榜"
                             scope="public"
+                            userId={user?.uid}
                         />
                         <ScoreboardTable
                             data={privateStats}
                             title="私人积分榜"
                             scope="private"
+                            userId={user?.uid}
                         />
 
                         {/* Access Code Section */}
@@ -400,6 +402,7 @@ export default function App() {
                                     data={sharedStats}
                                     title={`${sharedBoard.displayName} 的积分榜`}
                                     scope="shared"
+                                    userId={user?.uid}
                                 />
                             </div>
                         )}

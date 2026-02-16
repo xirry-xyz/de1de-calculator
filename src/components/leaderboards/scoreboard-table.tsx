@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { PlayerStats, ColumnDef } from "@/lib/types";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -7,12 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Info, Filter, Sparkles, Loader2, Key, Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { generateStyleEvaluations, getStoredApiKey, storeApiKey } from "@/lib/ai-evaluator";
+import { saveEvaluations, loadEvaluations } from "@/lib/firebase";
 import { toast } from "sonner";
 
 interface ScoreboardTableProps {
     data: PlayerStats[];
     title: string;
     scope: string;
+    userId?: string;
 }
 
 const COLUMNS: readonly ColumnDef[] = [
@@ -29,7 +31,7 @@ const COLUMNS: readonly ColumnDef[] = [
     { id: 'totalSessions', label: '局数' }
 ] as const;
 
-export function ScoreboardTable({ data, title, scope }: ScoreboardTableProps) {
+export function ScoreboardTable({ data, title, scope, userId }: ScoreboardTableProps) {
     const [minSessions, setMinSessions] = useState(0);
     const [sortConfig, setSortConfig] = useState<{ key: keyof PlayerStats; direction: 'asc' | 'desc' }>({
         key: 'score',
@@ -41,7 +43,15 @@ export function ScoreboardTable({ data, title, scope }: ScoreboardTableProps) {
     const [showApiKey, setShowApiKey] = useState(false);
     const [evaluations, setEvaluations] = useState<Record<string, string>>({});
     const [generating, setGenerating] = useState(false);
-    const hasEvaluations = Object.keys(evaluations).length > 0;
+    const [showAiPanel, setShowAiPanel] = useState(false);
+
+    // Load saved evaluations from Firestore on mount
+    useEffect(() => {
+        if (scope === 'shared') return;
+        loadEvaluations(scope, userId).then(saved => {
+            if (Object.keys(saved).length > 0) setEvaluations(saved);
+        }).catch(() => { /* ignore load errors */ });
+    }, [scope, userId]);
 
     const handleSort = (key: keyof PlayerStats) => {
         setSortConfig((prev) => ({
@@ -59,6 +69,10 @@ export function ScoreboardTable({ data, title, scope }: ScoreboardTableProps) {
         try {
             const result = await generateStyleEvaluations(apiKey.trim(), filteredData);
             setEvaluations(result);
+            // Save to Firestore for persistence
+            if (userId && scope !== 'shared') {
+                await saveEvaluations(scope, userId, result);
+            }
             toast.success("风格评价已生成 ✨");
         } catch (e: any) {
             const msg = e.message || "生成失败";
@@ -89,8 +103,6 @@ export function ScoreboardTable({ data, title, scope }: ScoreboardTableProps) {
         return "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300";
     };
 
-    const totalCols = COLUMNS.length + (hasEvaluations ? 1 : 0);
-
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between px-2">
@@ -108,6 +120,17 @@ export function ScoreboardTable({ data, title, scope }: ScoreboardTableProps) {
                             placeholder="0"
                         />
                     </div>
+                    {scope !== 'shared' && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 gap-1 text-xs"
+                            onClick={() => setShowAiPanel(!showAiPanel)}
+                        >
+                            <Sparkles className="w-3 h-3" />
+                            AI 评价
+                        </Button>
+                    )}
                     <span className={cn(
                         "px-2 py-0.5 rounded-full text-xs font-semibold",
                         scope === 'public' ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300" : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
@@ -117,39 +140,41 @@ export function ScoreboardTable({ data, title, scope }: ScoreboardTableProps) {
                 </div>
             </div>
 
-            {/* AI Evaluation Controls */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 px-2">
-                <div className="relative flex-1">
-                    <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                    <Input
-                        type={showApiKey ? "text" : "password"}
-                        value={apiKey}
-                        onChange={(e) => setApiKey(e.target.value)}
-                        placeholder="输入 Gemini API Key"
-                        className="pl-9 pr-9 h-8 text-xs font-mono"
-                    />
-                    <button
-                        type="button"
-                        onClick={() => setShowApiKey(!showApiKey)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+            {/* Collapsible AI Panel */}
+            {showAiPanel && scope !== 'shared' && (
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 px-2">
+                    <div className="relative flex-1">
+                        <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                        <Input
+                            type={showApiKey ? "text" : "password"}
+                            value={apiKey}
+                            onChange={(e) => setApiKey(e.target.value)}
+                            placeholder="输入 Gemini API Key"
+                            className="pl-9 pr-9 h-8 text-xs font-mono"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowApiKey(!showApiKey)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+                        >
+                            {showApiKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        </button>
+                    </div>
+                    <Button
+                        size="sm"
+                        onClick={handleGenerate}
+                        disabled={generating || filteredData.length === 0}
+                        className="h-8 gap-1.5 whitespace-nowrap"
                     >
-                        {showApiKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                    </button>
+                        {generating ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                            <Sparkles className="w-3.5 h-3.5" />
+                        )}
+                        {generating ? '生成中...' : '生成风格评价'}
+                    </Button>
                 </div>
-                <Button
-                    size="sm"
-                    onClick={handleGenerate}
-                    disabled={generating || filteredData.length === 0}
-                    className="h-8 gap-1.5 whitespace-nowrap"
-                >
-                    {generating ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                        <Sparkles className="w-3.5 h-3.5" />
-                    )}
-                    {generating ? '生成中...' : '生成风格评价'}
-                </Button>
-            </div>
+            )}
 
             <div className="rounded-xl border shadow-sm overflow-hidden bg-white dark:bg-card">
                 <Table>
@@ -186,20 +211,12 @@ export function ScoreboardTable({ data, title, scope }: ScoreboardTableProps) {
                                     </div>
                                 </TableHead>
                             ))}
-                            {hasEvaluations && (
-                                <TableHead className="min-w-[180px]">
-                                    <div className="flex items-center gap-1">
-                                        <Sparkles className="h-3 w-3 text-amber-500" />
-                                        风格评价
-                                    </div>
-                                </TableHead>
-                            )}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {sortedData.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={totalCols} className="h-24 text-center text-muted-foreground italic">
+                                <TableCell colSpan={COLUMNS.length} className="h-24 text-center text-muted-foreground italic">
                                     暂无数据...
                                 </TableCell>
                             </TableRow>
@@ -208,9 +225,31 @@ export function ScoreboardTable({ data, title, scope }: ScoreboardTableProps) {
                                 <TableRow key={idx} className="hover:bg-muted/30">
                                     <TableCell className="font-semibold">{s.name}</TableCell>
                                     <TableCell className="text-right">
-                                        <span className={cn("px-2 py-0.5 rounded-full text-xs", getScoreColor(s.score || 0))}>
-                                            {Math.round(s.score || 0)}
-                                        </span>
+                                        {evaluations[s.name] ? (
+                                            <TooltipProvider delayDuration={100}>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <span className={cn(
+                                                            "px-2 py-0.5 rounded-full text-xs cursor-help border-b border-dashed border-amber-400/50",
+                                                            getScoreColor(s.score || 0)
+                                                        )}>
+                                                            {Math.round(s.score || 0)} ✨
+                                                        </span>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent
+                                                        side="right"
+                                                        align="start"
+                                                        className="max-w-[320px] px-4 py-3 text-sm leading-relaxed whitespace-pre-line bg-popover border shadow-lg"
+                                                    >
+                                                        {evaluations[s.name]}
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                        ) : (
+                                            <span className={cn("px-2 py-0.5 rounded-full text-xs", getScoreColor(s.score || 0))}>
+                                                {Math.round(s.score || 0)}
+                                            </span>
+                                        )}
                                     </TableCell>
                                     <TableCell className="text-right font-mono text-sm">
                                         <span className={cn(
@@ -229,13 +268,6 @@ export function ScoreboardTable({ data, title, scope }: ScoreboardTableProps) {
                                     <TableCell className="text-right font-mono text-xs opacity-80">{(s.maxDrawdown || 0).toFixed(0)}</TableCell>
                                     <TableCell className="text-right font-mono text-xs opacity-80">{s.maxLosingStreak}</TableCell>
                                     <TableCell className="text-right font-mono text-xs opacity-80">{s.totalSessions}</TableCell>
-                                    {hasEvaluations && (
-                                        <TableCell className="text-sm max-w-[220px]">
-                                            <span className="inline-block bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-500/5 dark:to-orange-500/5 border border-amber-200/50 dark:border-amber-500/10 rounded-lg px-2.5 py-1 text-xs font-medium leading-relaxed">
-                                                {evaluations[s.name] || '—'}
-                                            </span>
-                                        </TableCell>
-                                    )}
                                 </TableRow>
                             ))
                         )}

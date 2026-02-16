@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore, doc, setDoc, getDocs, query, where, collection } from "firebase/firestore";
+import { getFirestore, doc, setDoc, getDoc, getDocs, query, where, collection } from "firebase/firestore";
 import type { SharedBoard } from "./types";
 
 const firebaseConfig = {
@@ -29,4 +29,32 @@ export async function lookupAccessCode(code: string): Promise<SharedBoard | null
     const snap = await getDocs(q);
     if (snap.empty) return null;
     return snap.docs[0].data() as SharedBoard;
+}
+
+// --- Style Evaluations Persistence ---
+const EVALUATIONS_BASE = `artifacts/${PROJECT_ID}`;
+
+function getEvaluationsPath(scope: string, userId?: string): string {
+    if (scope === 'public') return `${EVALUATIONS_BASE}/evaluations/public-scoreboard`;
+    return `${EVALUATIONS_BASE}/users/${userId}/evaluations/private-scoreboard`;
+}
+
+export async function saveEvaluations(
+    scope: string,
+    userId: string,
+    evaluations: Record<string, string>
+): Promise<void> {
+    const path = getEvaluationsPath(scope, userId);
+    await setDoc(doc(db, path), { evaluations, generatedAt: new Date().toISOString() });
+}
+
+export async function loadEvaluations(
+    scope: string,
+    userId?: string
+): Promise<Record<string, string>> {
+    if (!userId && scope !== 'public') return {};
+    const path = getEvaluationsPath(scope, userId);
+    const snap = await getDoc(doc(db, path));
+    if (!snap.exists()) return {};
+    return (snap.data().evaluations || {}) as Record<string, string>;
 }
