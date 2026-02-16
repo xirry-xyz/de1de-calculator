@@ -1,0 +1,29 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /categories/{category} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    match /bookmarks/{document} {
+      allow read: if resource.data.is_public == true || (request.auth != null && request.auth.uid == resource.data.user_id);
+      allow write: if request.auth != null;
+    }
+
+    // Access codes: anyone can read (to look up codes), only the owner can write
+    match /artifacts/{project}/access-codes/{uid} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Private scoreboards: anyone can read (access controlled by access code at app level)
+    match /artifacts/{project}/users/{userId}/private-scoreboard/{doc} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

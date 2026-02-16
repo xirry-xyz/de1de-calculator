@@ -50,3 +50,9 @@ export interface ColumnDef {
     label: string;
     tooltip?: string;
 }
+
+export interface SharedBoard {
+    uid: string;
+    accessCode: string;
+    displayName: string;
+}

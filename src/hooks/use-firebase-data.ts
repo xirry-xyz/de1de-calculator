@@ -78,3 +78,43 @@ export function useScoreboard(userId: string | undefined, isPublic: boolean) {
 
     return { stats, loading };
 }
+
+export function useSharedScoreboard(targetUid: string | null) {
+    const [stats, setStats] = useState<PlayerStats[]>([]);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (!targetUid) {
+            setStats([]);
+            return;
+        }
+
+        setLoading(true);
+        const path = `artifacts/${PROJECT_ID}/users/${targetUid}/private-scoreboard`;
+
+        const unsubscribe = onSnapshot(collection(db, path), (snap) => {
+            const hist: (HistoryEntry & { name: string })[] = [];
+            snap.forEach(d => {
+                const data = d.data();
+                if (data.history) {
+                    data.history.forEach((h: HistoryEntry) => hist.push({ name: data.name, ...h }));
+                }
+            });
+
+            const grp = hist.reduce((a, i) => {
+                if (!a[i.name]) a[i.name] = [];
+                a[i.name].push(i);
+                return a;
+            }, {} as Record<string, HistoryEntry[]>);
+
+            let playerStats = Object.keys(grp).map(k => calculateMetrics(k, grp[k]));
+            playerStats = calculateCompositeScores(playerStats);
+            setStats(playerStats);
+            setLoading(false);
+        });
+
+        return unsubscribe;
+    }, [targetUid]);
+
+    return { stats, loading };
+}

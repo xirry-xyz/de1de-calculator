@@ -1,17 +1,19 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { useSessions, useScoreboard } from "@/hooks/use-firebase-data";
+import { useSessions, useScoreboard, useSharedScoreboard } from "@/hooks/use-firebase-data";
 import { SessionConfigForm } from "@/components/game-calculator/session-config";
 import { ResultsTable } from "@/components/game-calculator/results-table";
 import { TransferList } from "@/components/game-calculator/transfer-list";
 import { ScoreboardTable } from "@/components/leaderboards/scoreboard-table";
 import { SessionHistory } from "@/components/history/session-history";
-import type { SessionConfig, PlayerResult, Session } from "@/lib/types";
+import type { SessionConfig, PlayerResult, Session, SharedBoard } from "@/lib/types";
 import { adjustDiscrepancy, calculateTransfers } from "@/lib/calculator-logic";
 import { Button } from "@/components/ui/button";
-import { Sun, Moon, LogIn, LogOut, Loader2 } from "lucide-react";
-import { db, PROJECT_ID } from "@/lib/firebase";
-import { doc, setDoc, runTransaction } from "firebase/firestore";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Sun, Moon, LogIn, LogOut, Loader2, Key, Search, X, Share2 } from "lucide-react";
+import { db, PROJECT_ID, setAccessCode, lookupAccessCode } from "@/lib/firebase";
+import { doc, setDoc, runTransaction, getDoc } from "firebase/firestore";
 import { Toaster, toast } from "sonner";
 
 export default function App() {
@@ -32,6 +34,60 @@ export default function App() {
     const { sessions: privateSessions } = useSessions(user?.uid, false);
     const { stats: publicStats } = useScoreboard(user?.uid, true);
     const { stats: privateStats } = useScoreboard(user?.uid, false);
+
+    // Access code state
+    const [myAccessCode, setMyAccessCode] = useState("");
+    const [myAccessCodeSaved, setMyAccessCodeSaved] = useState("");
+    const [lookupCode, setLookupCode] = useState("");
+    const [sharedBoard, setSharedBoard] = useState<SharedBoard | null>(null);
+    const [lookupLoading, setLookupLoading] = useState(false);
+    const { stats: sharedStats } = useSharedScoreboard(sharedBoard?.uid ?? null);
+
+    // Load existing access code on login
+    useEffect(() => {
+        if (!user || user.isAnonymous) return;
+        const loadCode = async () => {
+            try {
+                const snap = await getDoc(doc(db, `artifacts/${PROJECT_ID}/access-codes`, user.uid));
+                if (snap.exists()) {
+                    const data = snap.data();
+                    setMyAccessCode(data.accessCode || "");
+                    setMyAccessCodeSaved(data.accessCode || "");
+                }
+            } catch { /* ignore */ }
+        };
+        loadCode();
+    }, [user]);
+
+    const handleSetAccessCode = async () => {
+        if (!user || user.isAnonymous) return;
+        if (!myAccessCode.trim()) return toast.error("请输入 access code");
+        try {
+            await setAccessCode(user.uid, myAccessCode.trim(), user.displayName || user.email || '匿名用户');
+            setMyAccessCodeSaved(myAccessCode.trim());
+            toast.success("Access code 已保存");
+        } catch (e: any) {
+            toast.error("保存失败: " + e.message);
+        }
+    };
+
+    const handleLookup = async () => {
+        if (!lookupCode.trim()) return;
+        setLookupLoading(true);
+        try {
+            const result = await lookupAccessCode(lookupCode.trim());
+            if (result) {
+                setSharedBoard(result);
+                toast.success(`已连接到 ${result.displayName} 的榜单`);
+            } else {
+                toast.error("未找到对应榜单");
+            }
+        } catch (e: any) {
+            toast.error("查询失败: " + e.message);
+        } finally {
+            setLookupLoading(false);
+        }
+    };
 
     useEffect(() => {
         document.documentElement.classList.toggle('dark', theme === 'dark');
@@ -268,6 +324,85 @@ export default function App() {
                             title="私人积分榜"
                             scope="private"
                         />
+
+                        {/* Access Code Section */}
+                        <Card className="rounded-xl overflow-hidden shadow-sm">
+                            <CardHeader className="bg-muted/50 border-b py-5 px-6">
+                                <CardTitle className="text-lg font-bold flex items-center gap-2">
+                                    <Share2 className="w-5 h-5 text-primary" />
+                                    榜单分享
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="px-6 pt-6 pb-8 space-y-6">
+                                {/* Set my access code */}
+                                {user && !user.isAnonymous && (
+                                    <div className="space-y-3">
+                                        <p className="text-sm font-medium text-muted-foreground">设置你的 Access Code，让朋友查看你的私人积分榜</p>
+                                        <div className="flex gap-2">
+                                            <div className="relative flex-1">
+                                                <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                                <Input
+                                                    value={myAccessCode}
+                                                    onChange={(e) => setMyAccessCode(e.target.value)}
+                                                    placeholder="输入你的 access code"
+                                                    className="pl-9"
+                                                />
+                                            </div>
+                                            <Button onClick={handleSetAccessCode} disabled={!myAccessCode.trim() || myAccessCode.trim() === myAccessCodeSaved}>
+                                                保存
+                                            </Button>
+                                        </div>
+                                        {myAccessCodeSaved && (
+                                            <p className="text-xs text-muted-foreground">
+                                                当前 code: <span className="font-mono font-bold text-foreground">{myAccessCodeSaved}</span>
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Lookup someone's board */}
+                                <div className="space-y-3 border-t pt-6">
+                                    <p className="text-sm font-medium text-muted-foreground">输入朋友的 Access Code 查看其私人积分榜</p>
+                                    <div className="flex gap-2">
+                                        <div className="relative flex-1">
+                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                            <Input
+                                                value={lookupCode}
+                                                onChange={(e) => setLookupCode(e.target.value)}
+                                                placeholder="输入 access code"
+                                                className="pl-9"
+                                                onKeyDown={(e) => e.key === 'Enter' && handleLookup()}
+                                            />
+                                        </div>
+                                        <Button onClick={handleLookup} disabled={lookupLoading || !lookupCode.trim()}>
+                                            {lookupLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : '查看'}
+                                        </Button>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Shared Scoreboard */}
+                        {sharedBoard && (
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between px-2">
+                                    <div />
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => { setSharedBoard(null); setLookupCode(""); }}
+                                        className="text-muted-foreground hover:text-red-500"
+                                    >
+                                        <X className="w-4 h-4 mr-1" /> 关闭
+                                    </Button>
+                                </div>
+                                <ScoreboardTable
+                                    data={sharedStats}
+                                    title={`${sharedBoard.displayName} 的积分榜`}
+                                    scope="shared"
+                                />
+                            </div>
+                        )}
                     </div>
                 </main>
 

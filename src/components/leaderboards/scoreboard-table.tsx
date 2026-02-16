@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { PlayerStats, ColumnDef } from "@/lib/types";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Info } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Info, Filter } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ScoreboardTableProps {
@@ -26,6 +27,7 @@ const COLUMNS: readonly ColumnDef[] = [
 ] as const;
 
 export function ScoreboardTable({ data, title, scope }: ScoreboardTableProps) {
+    const [minSessions, setMinSessions] = useState(0);
     const [sortConfig, setSortConfig] = useState<{ key: keyof PlayerStats; direction: 'asc' | 'desc' }>({
         key: 'score',
         direction: 'desc'
@@ -38,7 +40,9 @@ export function ScoreboardTable({ data, title, scope }: ScoreboardTableProps) {
         }));
     };
 
-    const sortedData = [...data].sort((a, b) => {
+    const filteredData = data.filter(s => s.totalSessions >= minSessions);
+
+    const sortedData = [...filteredData].sort((a, b) => {
         const aVal = a[sortConfig.key] ?? 0;
         const bVal = b[sortConfig.key] ?? 0;
         if (aVal === bVal) return 0;
@@ -57,12 +61,26 @@ export function ScoreboardTable({ data, title, scope }: ScoreboardTableProps) {
         <div className="space-y-4">
             <div className="flex items-center justify-between px-2">
                 <h2 className="text-xl font-bold">{title}</h2>
-                <span className={cn(
-                    "px-2 py-0.5 rounded-full text-xs font-semibold",
-                    scope === 'public' ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300" : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
-                )}>
-                    {scope === 'public' ? '公共' : '私人'}
-                </span>
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                        <Filter className="w-3.5 h-3.5" />
+                        <span className="text-xs font-medium">最小局数</span>
+                        <Input
+                            type="number"
+                            min={0}
+                            value={minSessions || ''}
+                            onChange={(e) => setMinSessions(parseInt(e.target.value) || 0)}
+                            className="w-16 h-7 text-xs text-center"
+                            placeholder="0"
+                        />
+                    </div>
+                    <span className={cn(
+                        "px-2 py-0.5 rounded-full text-xs font-semibold",
+                        scope === 'public' ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300" : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+                    )}>
+                        {scope === 'public' ? '公共' : '私人'}
+                    </span>
+                </div>
             </div>
 
             <div className="rounded-xl border shadow-sm overflow-hidden bg-white dark:bg-card">
